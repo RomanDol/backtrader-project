@@ -1,0 +1,7 @@
+backtrader==1.9.78.123
+Flask==3.0.0
+flask-cors==4.0.0
+pandas==2.2.3
+numpy==1.26.4
+gunicorn==21.2.0; sys_platform != 'win32'
+python-dotenv==1.0.0
