@@ -1,0 +1,140 @@
+/* ===== CSS ПЕРЕМЕННЫЕ TRADING BOT ===== */
+
+:root {
+  /* ===== ЦВЕТА ===== */
+  --color-primary: #00ccff;
+  --color-secondary: #00ff88;
+  --color-success: #00ff88;
+  --color-error: #ff6b6b;
+  --color-warning: #ffa500;
+  --color-info: #00ccff;
+  
+  /* Background Colors */
+  --bg-dark: #111;
+  --bg-dark-secondary: #1a1a1a;
+  --bg-dark-tertiary: #222;
+  --bg-dark-quaternary: #2a2a2a;
+  --bg-gradient-primary: linear-gradient(145deg, #1a1a1a, #2a2a2a);
+  --bg-gradient-secondary: linear-gradient(145deg, #222, #2a2a2a);
+  --bg-gradient-success: linear-gradient(145deg, #00ff88, #00cc70);
+  --bg-gradient-error: linear-gradient(145deg, #ff6b6b, #ee5a52);
+  
+  /* Text Colors */
+  --text-primary: #ffffff;
+  --text-secondary: #cccccc;
+  --text-muted: #888888;
+  --text-disabled: #666666;
+  
+  /* Border Colors */
+  --border-color: #333333;
+  --border-color-light: #444444;
+  --border-color-focus: var(--color-secondary);
+  
+  /* ===== ОТСТУПЫ И РАЗМЕРЫ ===== */
+  --spacing-xs: 5px;
+  --spacing-sm: 10px;
+  --spacing-md: 15px;
+  --spacing-lg: 20px;
+  --spacing-xl: 30px;
+  --spacing-xxl: 40px;
+  
+  /* Размеры компонентов */
+  --btn-padding: var(--spacing-xs) var(--spacing-sm);
+  --btn-padding-large: var(--spacing-md) var(--spacing-lg);
+  --btn-padding-small: 6px var(--spacing-sm);
+  --input-padding: var(--spacing-sm) 12px;
+  --container-padding: var(--spacing-lg);
+  --section-margin: var(--spacing-xl);
+  
+  /* ===== ТИПОГРАФИЯ ===== */
+  --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  
+  /* Размеры шрифтов */
+  --font-size-xs: 11px;
+  --font-size-sm: 12px;
+  --font-size-base: 13.33px;
+  --font-size-md: 14px;
+  --font-size-lg: 16px;
+  --font-size-xl: 18px;
+  --font-size-xxl: 24px;
+  
+  /* Высота строк */
+  --line-height-tight: 1.2;
+  --line-height-base: 1.4;
+  --line-height-relaxed: 1.6;
+  
+  /* Толщина шрифта */
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-bold: 700;
+  
+  /* ===== ГРАНИЦЫ И СКРУГЛЕНИЯ ===== */
+  --border-radius-sm: 4px;
+  --border-radius-base: 6px;
+  --border-radius-md: 8px;
+  --border-radius-lg: 12px;
+  
+  --border-width: 1px;
+  --border-width-thick: 2px;
+  
+  /* ===== ТЕНИ ===== */
+  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.1);
+  --shadow-base: 0 5px 15px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.5);
+  --shadow-glow-primary: 0 5px 15px rgba(0, 204, 255, 0.2);
+  --shadow-glow-secondary: 0 5px 15px rgba(0, 255, 136, 0.2);
+  --shadow-glow-success: 0 5px 15px rgba(0, 255, 136, 0.4);
+  
+  /* ===== Z-INDEX ===== */
+  --z-dropdown: 100;
+  --z-sticky: 200;
+  --z-nav: 1000;
+  --z-modal: 1100;
+  --z-tooltip: 1200;
+  
+  /* ===== ПЕРЕХОДЫ И АНИМАЦИИ ===== */
+  --transition-fast: 0.15s ease;
+  --transition-base: 0.3s ease;
+  --transition-slow: 0.5s ease;
+  
+  /* ===== КОНТРОЛЬНЫЕ ТОЧКИ (BREAKPOINTS) ===== */
+  --breakpoint-sm: 480px;
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 1024px;
+  --breakpoint-xl: 1200px;
+  
+  /* ===== РАЗМЕРЫ LAYOUT ===== */
+  --container-max-width: 1000px;
+  --container-max-width-lg: 1200px;
+  --nav-height: 60px;
+  --sidebar-width: 250px;
+  
+  /* ===== КОМПОНЕНТ-СПЕЦИФИЧНЫЕ ПЕРЕМЕННЫЕ ===== */
+  
+  /* Status Indicators */
+  --status-dot-size: 8px;
+  --status-active-color: var(--color-success);
+  --status-inactive-color: var(--color-error);
+  --status-unknown-color: var(--text-muted);
+  
+  /* Navigation */
+  --nav-item-padding: 4px var(--spacing-sm);
+  --nav-item-font-size: var(--font-size-sm);
+  --mobile-menu-padding: var(--spacing-lg);
+  
+  /* Tables */
+  --table-border-color: var(--border-color);
+  --table-row-hover: var(--bg-dark-quaternary);
+  --table-header-bg: var(--border-color);
+  
+  /* Forms */
+  --input-bg: var(--bg-dark-tertiary);
+  --input-border: var(--border-color-light);
+  --input-focus-border: var(--color-secondary);
+  
+  /* Cards */
+  --card-bg: var(--bg-gradient-primary);
+  --card-border: var(--border-color);
+  --card-padding: var(--spacing-xl);
+}

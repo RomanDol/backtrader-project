@@ -263,6 +263,25 @@ input[type="number"]:focus {
     color: var(--text-secondary);
 }
 
+.message {
+    padding: 1rem;
+    border-radius: 8px;
+    font-weight: 500;
+    display: none;
+}
+
+.message--success {
+    background: rgba(16, 185, 129, 0.1);
+    border: 1px solid var(--success-color);
+    color: var(--success-color);
+}
+
+.message--error {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid var(--danger-color);
+    color: var(--danger-color);
+}
+
 footer {
     text-align: center;
     padding: 2rem 0;

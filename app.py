@@ -5,6 +5,7 @@ import os
 from datetime import datetime
 import pandas as pd
 from strategy import run_backtest
+from backend.core.binance_symbols import binance_symbols_manager
 
 app = Flask(__name__)
 CORS(app)
@@ -22,6 +23,12 @@ app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max
 def index():
     """Главная страница"""
     return render_template('index.html')
+
+
+@app.route('/tools')
+def tools():
+    """Страница инструментов"""
+    return render_template('tools.html')
 
 
 @app.route('/api/backtest', methods=['POST'])
@@ -97,13 +104,23 @@ def upload_file():
         return jsonify({'success': False, 'error': str(e)}), 400
 
 
-@app.route('/api/health', methods=['GET'])
-def health():
-    """Health check endpoint"""
-    return jsonify({
-        'status': 'healthy',
-        'timestamp': datetime.now().isoformat()
-    })
+@app.route('/api/update_symbols', methods=['POST'])
+def update_symbols():
+    """Обновление списка символов Binance"""
+    try:
+        success, message = binance_symbols_manager.update_symbols()
+        return jsonify({
+            'status': 'success' if success else 'error',
+            'message': message
+        })
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': f'Ошибка обновления символов: {str(e)}'
+        }), 500
+
+
+
 
 
 if __name__ == '__main__':
