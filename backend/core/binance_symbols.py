@@ -6,7 +6,7 @@ import psycopg2
 import psycopg2.extras
 import logging
 import os
-from typing import Tuple, Dict, Any
+from typing import Tuple, Dict, Any, List
 from dotenv import load_dotenv
 from decimal import Decimal
 
@@ -134,6 +134,26 @@ class BinanceSymbolsManager:
             error_msg = f"Ошибка сохранения в базу данных: {str(e)}"
             logger.error(f"❌ {error_msg}")
             return False, error_msg
+    
+    def get_symbols_list(self) -> List[str]:
+        """
+        Получает список всех символов из базы данных
+        
+        Returns:
+            List[str]: Список символов, отсортированный по алфавиту
+        """
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT symbol FROM binance_symbols ORDER BY symbol")
+                symbols = [row[0] for row in cursor.fetchall()]
+                
+            logger.info(f"📋 Получено {len(symbols)} символов из базы данных")
+            return symbols
+            
+        except Exception as e:
+            logger.error(f"❌ Ошибка получения списка символов: {e}")
+            return []
     
     def update_symbols(self) -> Tuple[bool, str]:
         """

@@ -10,6 +10,7 @@
     </header>
 
     <main>
+        <!-- Обновление списка символов -->
         <div class="card">
             <h2>📋 Binance Symbols</h2>
             <p class="hint">Обновить список всех доступных символов на Binance Futures</p>
@@ -22,6 +23,77 @@
             </div>
             
             <div id="symbols-message" class="message" style="display: none; margin-top: 1rem;"></div>
+        </div>
+
+        <!-- Загрузка исторических данных -->
+        <div class="card">
+            <h2>📊 Historical Data Download</h2>
+            <p class="hint">Загрузка исторических данных свечей с Binance Data</p>
+            
+            <form id="download-data-form">
+                <div class="form-group">
+                    <label for="symbol-select">Symbol:</label>
+                    <select id="symbol-select" name="symbol" required>
+                        <option value="">Loading symbols...</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="timeframe-select">Timeframe:</label>
+                    <select id="timeframe-select" name="timeframe" required>
+                        <option value="1m">1 minute</option>
+                        <option value="3m">3 minutes</option>
+                        <option value="5m">5 minutes</option>
+                        <option value="15m">15 minutes</option>
+                        <option value="30m">30 minutes</option>
+                        <option value="1h">1 hour</option>
+                        <option value="2h">2 hours</option>
+                        <option value="4h">4 hours</option>
+                        <option value="6h">6 hours</option>
+                        <option value="8h">8 hours</option>
+                        <option value="12h">12 hours</option>
+                        <option value="1d" selected>1 day</option>
+                        <option value="3d">3 days</option>
+                        <option value="1w">1 week</option>
+                        <option value="1mo">1 month</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="period-select">Period:</label>
+                    <select id="period-select" name="period" required>
+                        <option value="daily">Daily (one day)</option>
+                        <option value="monthly" selected>Monthly (one month)</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="start-date">Start Date:</label>
+                    <input type="date" id="start-date" name="start_date" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="end-date">End Date:</label>
+                    <input type="date" id="end-date" name="end_date" required>
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">
+                        <span class="btn-icon">📥</span>
+                        Download Data
+                    </button>
+                </div>
+            </form>
+
+            <div id="download-message" class="message" style="display: none; margin-top: 1rem;"></div>
+            
+            <!-- Прогресс-бар -->
+            <div id="download-progress" style="display: none; margin-top: 1rem;">
+                <div style="background: var(--bg-dark-tertiary); border-radius: var(--border-radius-base); overflow: hidden;">
+                    <div id="progress-bar" style="height: 24px; background: linear-gradient(135deg, var(--color-primary), var(--color-secondary)); width: 0%; transition: width 0.3s ease; display: flex; align-items: center; justify-content: center; color: white; font-size: 12px; font-weight: bold;"></div>
+                </div>
+                <p id="progress-text" style="margin-top: 0.5rem; font-size: 14px; color: var(--text-secondary);"></p>
+            </div>
         </div>
     </main>
 

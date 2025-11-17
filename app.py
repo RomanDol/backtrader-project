@@ -6,6 +6,7 @@ from datetime import datetime
 import pandas as pd
 from strategy import run_backtest
 from backend.core.binance_symbols import binance_symbols_manager
+from backend.core.binance_data_loader import binance_data_loader
 
 app = Flask(__name__)
 CORS(app)
@@ -120,7 +121,96 @@ def update_symbols():
         }), 500
 
 
+@app.route('/api/get_symbols', methods=['GET'])
+def get_symbols():
+    """Получение списка символов из базы данных"""
+    try:
+        symbols = binance_symbols_manager.get_symbols_list()
+        return jsonify({
+            'status': 'success',
+            'symbols': symbols
+        })
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': f'Ошибка получения символов: {str(e)}'
+        }), 500
 
+
+@app.route('/api/download_historical_data', methods=['POST'])
+def download_historical_data():
+    """Загрузка исторических данных с Binance"""
+    try:
+        data = request.json
+        
+        symbol = data.get('symbol')
+        timeframe = data.get('timeframe')
+        period = data.get('period')  # 'daily' или 'monthly'
+        start_date = data.get('start_date')
+        end_date = data.get('end_date')
+        
+        # Валидация
+        if not all([symbol, timeframe, period, start_date, end_date]):
+            return jsonify({
+                'status': 'error',
+                'message': 'Все поля обязательны для заполнения'
+            }), 400
+        
+        # Загружаем данные
+        success, message, stats = binance_data_loader.download_historical_data(
+            symbol=symbol,
+            timeframe=timeframe,
+            period=period,
+            start_date=start_date,
+            end_date=end_date
+        )
+        
+        if success:
+            return jsonify({
+                'status': 'success',
+                'message': message,
+                'stats': stats
+            })
+        else:
+            return jsonify({
+                'status': 'error',
+                'message': message
+            }), 500
+        
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': f'Ошибка загрузки данных: {str(e)}'
+        }), 500
+    """Загрузка исторических данных с Binance"""
+    try:
+        data = request.json
+        
+        symbol = data.get('symbol')
+        timeframe = data.get('timeframe')
+        period = data.get('period')  # 'daily' или 'monthly'
+        start_date = data.get('start_date')
+        end_date = data.get('end_date')
+        
+        # Валидация
+        if not all([symbol, timeframe, period, start_date, end_date]):
+            return jsonify({
+                'status': 'error',
+                'message': 'Все поля обязательны для заполнения'
+            }), 400
+        
+        # Здесь будет логика загрузки данных
+        # Пока возвращаем заглушку
+        return jsonify({
+            'status': 'success',
+            'message': f'Загрузка данных для {symbol} ({timeframe}) с {start_date} по {end_date} (период: {period})'
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': f'Ошибка загрузки данных: {str(e)}'
+        }), 500
 
 
 if __name__ == '__main__':
