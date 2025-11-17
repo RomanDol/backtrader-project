@@ -165,8 +165,8 @@
 /* ===== КАРТОЧКИ ===== */
 
 .card {
-    background: var(--card-bg);
-    border-radius: var(--border-radius-lg);
+    background: #0d0e0e;
+    border-radius: 8px;
     padding: var(--card-padding);
     border: var(--border-width-thick) solid var(--card-border);
     box-shadow: var(--shadow-base);

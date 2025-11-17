@@ -1,126 +1,127 @@
-{% extends "base.html" %}
-
-{% block title %}Backtest - Backtrader Platform{% endblock %}
-
-{% block content %}
+{% extends "base.html" %} {% block title %}Backtest - Backtrader Platform{%
+endblock %} {% block content %}
 <div class="container">
-    <header>
-        <h1>🚀 Backtrader Platform</h1>
-        <p class="subtitle">Профессиональная платформа для бэктестинга торговых стратегий</p>
-    </header>
+  <main>
+    <div class="card">
+      <form id="backtestForm">
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="initial_cash"> 💰 Начальный капитал ($) </label>
+            <input
+              type="number"
+              id="initial_cash"
+              name="initial_cash"
+              value="10000"
+              min="100"
+              step="100"
+              required
+            />
+          </div>
 
-    <main>
-        <div class="card">
-            <h2>⚙️ Параметры стратегии</h2>
-            
-            <form id="backtestForm">
-                <div class="form-grid">
-                    <div class="form-group">
-                        <label for="initial_cash">
-                            💰 Начальный капитал ($)
-                            <span class="hint">Стартовая сумма для торговли</span>
-                        </label>
-                        <input type="number" id="initial_cash" name="initial_cash" 
-                               value="10000" min="100" step="100" required>
-                    </div>
+          <div class="form-group">
+            <label for="commission"> 📊 Комиссия (%) </label>
+            <input
+              type="number"
+              id="commission"
+              name="commission"
+              value="0.1"
+              min="0"
+              max="5"
+              step="0.01"
+              required
+            />
+          </div>
 
-                    <div class="form-group">
-                        <label for="commission">
-                            📊 Комиссия (%)
-                            <span class="hint">Комиссия брокера за сделку</span>
-                        </label>
-                        <input type="number" id="commission" name="commission" 
-                               value="0.1" min="0" max="5" step="0.01" required>
-                    </div>
+          <div class="form-group">
+            <label for="fast_period"> ⚡ Быстрая MA (период) </label>
+            <input
+              type="number"
+              id="fast_period"
+              name="fast_period"
+              value="10"
+              min="2"
+              max="50"
+              required
+            />
+          </div>
 
-                    <div class="form-group">
-                        <label for="fast_period">
-                            ⚡ Быстрая MA (период)
-                            <span class="hint">Период быстрой скользящей средней</span>
-                        </label>
-                        <input type="number" id="fast_period" name="fast_period" 
-                               value="10" min="2" max="50" required>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="slow_period">
-                            🐌 Медленная MA (период)
-                            <span class="hint">Период медленной скользящей средней</span>
-                        </label>
-                        <input type="number" id="slow_period" name="slow_period" 
-                               value="30" min="5" max="200" required>
-                    </div>
-                </div>
-
-                <div class="form-actions">
-                    <button type="submit" class="btn btn-primary" id="runBtn">
-                        <span class="btn-icon">▶️</span>
-                        Запустить бэктест
-                    </button>
-                </div>
-            </form>
+          <div class="form-group">
+            <label for="slow_period"> 🐌 Медленная MA (период) </label>
+            <input
+              type="number"
+              id="slow_period"
+              name="slow_period"
+              value="30"
+              min="5"
+              max="200"
+              required
+            />
+          </div>
         </div>
 
-        <div id="loader" class="loader" style="display: none;">
-            <div class="spinner"></div>
-            <p>Выполняется бэктест...</p>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary" id="runBtn">
+            <span class="btn-icon">▶️</span>
+            Запустить бэктест
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <div id="loader" class="loader" style="display: none">
+      <div class="spinner"></div>
+      <p>Выполняется бэктест...</p>
+    </div>
+
+    <div id="results" class="results" style="display: none">
+      <div class="card">
+        <h2>📈 Результаты бэктеста</h2>
+
+        <div class="results-grid">
+          <div class="result-item highlight">
+            <div class="result-label">Финальный капитал</div>
+            <div class="result-value" id="final_value">$0.00</div>
+          </div>
+
+          <div class="result-item">
+            <div class="result-label">Прибыль / Убыток</div>
+            <div class="result-value" id="profit">$0.00</div>
+          </div>
+
+          <div class="result-item">
+            <div class="result-label">Доходность</div>
+            <div class="result-value" id="profit_percent">0.00%</div>
+          </div>
+
+          <div class="result-item">
+            <div class="result-label">Коэффициент Шарпа</div>
+            <div class="result-value" id="sharpe_ratio">0.00</div>
+          </div>
+
+          <div class="result-item">
+            <div class="result-label">Макс. просадка</div>
+            <div class="result-value" id="max_drawdown">0.00%</div>
+          </div>
+
+          <div class="result-item">
+            <div class="result-label">Общая доходность</div>
+            <div class="result-value" id="total_return">0.00%</div>
+          </div>
         </div>
 
-        <div id="results" class="results" style="display: none;">
-            <div class="card">
-                <h2>📈 Результаты бэктеста</h2>
-                
-                <div class="results-grid">
-                    <div class="result-item highlight">
-                        <div class="result-label">Финальный капитал</div>
-                        <div class="result-value" id="final_value">$0.00</div>
-                    </div>
-
-                    <div class="result-item">
-                        <div class="result-label">Прибыль / Убыток</div>
-                        <div class="result-value" id="profit">$0.00</div>
-                    </div>
-
-                    <div class="result-item">
-                        <div class="result-label">Доходность</div>
-                        <div class="result-value" id="profit_percent">0.00%</div>
-                    </div>
-
-                    <div class="result-item">
-                        <div class="result-label">Коэффициент Шарпа</div>
-                        <div class="result-value" id="sharpe_ratio">0.00</div>
-                    </div>
-
-                    <div class="result-item">
-                        <div class="result-label">Макс. просадка</div>
-                        <div class="result-value" id="max_drawdown">0.00%</div>
-                    </div>
-
-                    <div class="result-item">
-                        <div class="result-label">Общая доходность</div>
-                        <div class="result-value" id="total_return">0.00%</div>
-                    </div>
-                </div>
-
-                <div class="trades-info">
-                    <h3>📋 Информация о сделках</h3>
-                    <div id="trades_info"></div>
-                </div>
-            </div>
+        <div class="trades-info">
+          <h3>📋 Информация о сделках</h3>
+          <div id="trades_info"></div>
         </div>
+      </div>
+    </div>
 
-        <div id="error" class="error" style="display: none;">
-            <h3>❌ Ошибка</h3>
-            <p id="error_message"></p>
-        </div>
-    </main>
-
-    <footer>
-        <p>Powered by Backtrader | © 2024</p>
-    </footer>
+    <div id="error" class="error" style="display: none">
+      <h3>❌ Ошибка</h3>
+      <p id="error_message"></p>
+    </div>
+  </main>
 </div>
-{% endblock %}
-
-{% block js %}
+{% endblock %} {% block js %}
 <script src="{{ url_for('static', filename='js/app.js') }}"></script>
 {% endblock %}
