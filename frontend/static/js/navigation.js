@@ -5,6 +5,20 @@ document.addEventListener("DOMContentLoaded", function () {
   const mobileMenu = document.getElementById("mobile-menu")
   const body = document.body
 
+  console.log("Backtest page loaded")
+
+  // ДОБАВЬ ПРОВЕРКУ ЗАГРУЗКИ БИБЛИОТЕКИ
+  console.log(
+    "LightweightCharts available:",
+    typeof LightweightCharts !== "undefined"
+  )
+
+  if (typeof LightweightCharts === "undefined") {
+    console.error("CRITICAL: LightweightCharts not loaded!")
+    alert("Chart library failed to load. Please refresh the page.")
+    return
+  }
+
   // Переключение мобильного меню
   function toggleMobileMenu() {
     const isOpen = mobileMenu.classList.contains("open")

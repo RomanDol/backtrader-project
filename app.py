@@ -8,7 +8,10 @@ from strategy import run_backtest
 from backend.core.binance_symbols import binance_symbols_manager
 from backend.core.binance_data_loader import binance_data_loader
 
-app = Flask(__name__)
+app = Flask(__name__, 
+            template_folder='frontend/templates',
+            static_folder='frontend/static')
+
 CORS(app)
 
 # Папка для загрузки файлов
@@ -31,6 +34,10 @@ def tools():
     """Страница инструментов"""
     return render_template('tools.html')
 
+@app.route('/backtest')
+def backtest_page():
+    """Страница тестирования стратегий"""
+    return render_template('backtest.html')
 
 @app.route('/api/backtest', methods=['POST'])
 def backtest():
@@ -212,6 +219,134 @@ def download_historical_data():
             'message': f'Ошибка загрузки данных: {str(e)}'
         }), 500
 
+@app.route('/api/get_available_data', methods=['GET'])
+def get_available_data():
+    """Получение доступных символов, таймфреймов и диапазонов дат"""
+    try:
+        import psycopg2
+        
+        DB_CONFIG = {
+            'host': os.getenv('POSTGRES_HOST', 'localhost'),
+            'port': int(os.getenv('POSTGRES_PORT', 5432)),
+            'database': os.getenv('POSTGRES_DATABASE', 'backtrader'),
+            'user': os.getenv('POSTGRES_USER'),
+            'password': os.getenv('POSTGRES_PASSWORD')
+        }
+        
+        conn = psycopg2.connect(**DB_CONFIG)
+        cursor = conn.cursor()
+        
+        # Получаем уникальные комбинации символов и таймфреймов с датами
+        cursor.execute("""
+            SELECT 
+                symbol, 
+                timeframe,
+                MIN(time) as start_date,
+                MAX(time) as end_date,
+                COUNT(*) as candles_count
+            FROM candles
+            GROUP BY symbol, timeframe
+            ORDER BY symbol, timeframe
+        """)
+        
+        rows = cursor.fetchall()
+        
+        data = []
+        for row in rows:
+            data.append({
+                'symbol': row[0],
+                'timeframe': row[1],
+                'start_date': row[2].strftime('%Y-%m-%d'),
+                'end_date': row[3].strftime('%Y-%m-%d'),
+                'candles_count': row[4]
+            })
+        
+        cursor.close()
+        conn.close()
+        
+        return jsonify({
+            'status': 'success',
+            'data': data
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': f'Ошибка получения данных: {str(e)}'
+        }), 500
 
+
+@app.route('/api/get_candles', methods=['POST'])
+def get_candles():
+    """Получение свечей для графика"""
+    try:
+        import psycopg2
+        
+        data = request.json
+        symbol = data.get('symbol')
+        timeframe = data.get('timeframe')
+        start_date = data.get('start_date')
+        end_date = data.get('end_date')
+        
+        if not all([symbol, timeframe, start_date, end_date]):
+            return jsonify({
+                'status': 'error',
+                'message': 'Все параметры обязательны'
+            }), 400
+        
+        DB_CONFIG = {
+            'host': os.getenv('POSTGRES_HOST', 'localhost'),
+            'port': int(os.getenv('POSTGRES_PORT', 5432)),
+            'database': os.getenv('POSTGRES_DATABASE', 'backtrader'),
+            'user': os.getenv('POSTGRES_USER'),
+            'password': os.getenv('POSTGRES_PASSWORD')
+        }
+        
+        conn = psycopg2.connect(**DB_CONFIG)
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            SELECT 
+                EXTRACT(EPOCH FROM time) as timestamp,
+                open,
+                high,
+                low,
+                close,
+                volume
+            FROM candles
+            WHERE symbol = %s 
+                AND timeframe = %s 
+                AND time >= %s 
+                AND time <= %s
+            ORDER BY time ASC
+        """, (symbol, timeframe, start_date, end_date))
+        
+        rows = cursor.fetchall()
+        
+        candles = []
+        for row in rows:
+            candles.append({
+                'time': int(row[0]),
+                'open': float(row[1]),
+                'high': float(row[2]),
+                'low': float(row[3]),
+                'close': float(row[4]),
+                'volume': float(row[5])
+            })
+        
+        cursor.close()
+        conn.close()
+        
+        return jsonify({
+            'status': 'success',
+            'candles': candles
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': f'Ошибка получения свечей: {str(e)}'
+        }), 500
+    
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=False)
