@@ -134,6 +134,24 @@ Platform{% endblock %} {% block content %}
       </div>
     </form>
 
+    <!-- Сообщения -->
+    <div
+      id="backtest-message"
+      class="message"
+      style="display: none; margin-top: var(--spacing-md)"
+    ></div>
+
+    <!-- Результаты бэктеста -->
+    <div
+      id="results-container"
+      style="margin-top: var(--spacing-lg); display: none"
+    >
+      <h3 style="margin: 0 0 var(--spacing-md) 0; color: var(--color-success)">
+        📊 Results
+      </h3>
+      <div id="results-table"></div>
+    </div>
+
     <div
       id="backtest-message"
       class="message"

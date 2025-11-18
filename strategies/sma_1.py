@@ -2,8 +2,9 @@
 Стратегия на основе скользящих средних (SMA)
 """
 import backtrader as bt
+from .base import BaseStrategy
 
-class SimpleMovingAverageStrategy(bt.Strategy):
+class SimpleMovingAverageStrategy(BaseStrategy):
     """
     Простая стратегия на основе скользящих средних (SMA)
     Сигнал на покупку: быстрая SMA пересекает медленную снизу вверх
@@ -45,6 +46,8 @@ class SimpleMovingAverageStrategy(bt.Strategy):
     )
 
     def __init__(self):
+        super().__init__()  # Вызов базового __init__
+        
         self.dataclose = self.datas[0].close
         self.order = None
         self.buyprice = None
@@ -83,11 +86,6 @@ class SimpleMovingAverageStrategy(bt.Strategy):
             self.log('Ордер Отменен/Маржа/Отклонен')
 
         self.order = None
-
-    def notify_trade(self, trade):
-        if not trade.isclosed:
-            return
-        self.log(f'ПРИБЫЛЬ ПО СДЕЛКЕ, Валовая: {trade.pnl:.2f}, Чистая: {trade.pnlcomm:.2f}')
 
     def next(self):
         self.log(f'Закрытие: {self.dataclose[0]:.2f}')

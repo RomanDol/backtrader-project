@@ -41,8 +41,6 @@ class BinanceDataLoader:
             raise
         
 
-
-
     def load_data_for_backtest(self, symbol: str, timeframe: str, start_date: str, end_date: str):
         """
         Загружает данные из базы для бэктеста
@@ -59,27 +57,27 @@ class BinanceDataLoader:
         try:
             import pandas as pd
             
-            # Определяем имя таблицы
-            table_name = f"{symbol.lower()}_{timeframe}"
-            
             with self.get_connection() as conn:
-                query = f"""
+                query = """
                     SELECT 
-                        open_time as datetime,
+                        time as datetime,
                         open,
                         high,
                         low,
                         close,
                         volume
-                    FROM {table_name}
-                    WHERE open_time >= %s AND open_time <= %s
-                    ORDER BY open_time
+                    FROM candles
+                    WHERE symbol = %s 
+                      AND timeframe = %s
+                      AND time >= %s 
+                      AND time <= %s
+                    ORDER BY time
                 """
                 
                 df = pd.read_sql_query(
                     query, 
                     conn, 
-                    params=(start_date, end_date + ' 23:59:59')
+                    params=(symbol, timeframe, start_date, end_date + ' 23:59:59')
                 )
                 
                 if df.empty:
@@ -90,13 +88,15 @@ class BinanceDataLoader:
                 df['datetime'] = pd.to_datetime(df['datetime'])
                 df.set_index('datetime', inplace=True)
                 
-                logger.info(f"✅ Загружено {len(df)} свечей из таблицы {table_name}")
+                logger.info(f"✅ Загружено {len(df)} свечей из таблицы candles")
                 return df
                 
         except Exception as e:
             logger.error(f"❌ Ошибка загрузки данных для бэктеста: {e}")
             return None
-    
+
+
+
     def download_and_parse_zip(self, url: str) -> Tuple[bool, List[List]]:
         """
         Скачивает ZIP архив и парсит CSV данные

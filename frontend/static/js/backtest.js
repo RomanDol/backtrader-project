@@ -481,10 +481,20 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   function displayResults(results) {
+    const resultsContainer = document.getElementById("results-container")
+    if (!resultsContainer) return
+
+    const resultsTable = document.getElementById("results-table")
     if (!resultsTable) return
 
     resultsTable.innerHTML = `
       <table style="width: 100%; font-size: 14px;">
+        <tr>
+          <td style="padding: 8px 0; color: var(--text-secondary);">Initial Value:</td>
+          <td style="padding: 8px 0; text-align: right; font-weight: bold;">$${results.initial_value.toFixed(
+            2
+          )}</td>
+        </tr>
         <tr>
           <td style="padding: 8px 0; color: var(--text-secondary);">Final Value:</td>
           <td style="padding: 8px 0; text-align: right; font-weight: bold;">$${results.final_value.toFixed(
@@ -518,12 +528,20 @@ document.addEventListener("DOMContentLoaded", function () {
           )}%</td>
         </tr>
         <tr>
+          <td style="padding: 8px 0; color: var(--text-secondary);">Total Return:</td>
+          <td style="padding: 8px 0; text-align: right; font-weight: bold;">${results.total_return.toFixed(
+            2
+          )}%</td>
+        </tr>
+        <tr>
           <td style="padding: 8px 0; color: var(--text-secondary);">Total Trades:</td>
           <td style="padding: 8px 0; text-align: right; font-weight: bold;">${
-            results.total_trades
+            results.trades_count || 0
           }</td>
         </tr>
       </table>
     `
+
+    resultsContainer.style.display = "block"
   }
 })
