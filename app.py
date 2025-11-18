@@ -4,7 +4,7 @@ import json
 import os
 from datetime import datetime
 import pandas as pd
-from strategy import run_backtest
+# from strategy import run_backtest
 from backend.core.binance_symbols import binance_symbols_manager
 from backend.core.binance_data_loader import binance_data_loader
 
@@ -110,7 +110,7 @@ def backtest():
             'error': str(e)
         }), 500
 
-        
+
 
 @app.route('/api/upload', methods=['POST'])
 def upload_file():

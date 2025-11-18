@@ -24,7 +24,25 @@ Platform{% endblock %} {% block content %}
 
     <!-- Нижняя часть - График доходности  -->
     <div style="flex: 1">
-      <div id="equity-chart" style="width: 100%; height: 100%"></div>
+      <!--  Grafana -->
+      <div class="">
+        <div
+          style="
+            height: 45vh;
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius-md);
+            overflow: hidden;
+          "
+        >
+          <iframe
+            src="http://localhost:3000/public-dashboards/0f9b339850ba4dc98153d6ef0b5499df"
+            width="100%"
+            height="100%"
+            frameborder="0"
+          >
+          </iframe>
+        </div>
+      </div>
     </div>
   </div>
 

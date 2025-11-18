@@ -1,69 +1,92 @@
 <!DOCTYPE html>
 <html lang="ru">
-<head>
-    <meta charset="UTF-8">
+  <head>
+    <meta charset="UTF-8" />
     <title>{% block title %}Backtrader Platform{% endblock %}</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
     <!-- Favicon -->
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📈</text></svg>">
-    
+    <link
+      rel="icon"
+      type="image/svg+xml"
+      href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📈</text></svg>"
+    />
+
     <!-- CSS Files - порядок важен! -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/variables.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/components.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/layout.css') }}">
-    
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/variables.css') }}"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/style.css') }}"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/components.css') }}"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/layout.css') }}"
+    />
+
     <!-- Page-specific CSS -->
     {% block css %}{% endblock %}
-</head>
-<body>
+  </head>
+  <body>
     <!-- Navigation Header -->
     <nav class="main-nav">
-        <!-- Desktop Navigation -->
-        <div class="nav-desktop">
-            <div class="nav-menu">
-                <a href="/" class="nav-item {% if request.endpoint == 'index' %}nav-item--active{% endif %}">
+      <!-- Desktop Navigation -->
+      <div class="nav-desktop">
+        <div class="nav-menu">
+          <!-- <a href="/" class="nav-item {% if request.endpoint == 'index' %}nav-item--active{% endif %}">
                     📈 Backtest
-                </a>
-                <a href="/tools" class="nav-item {% if request.endpoint == 'tools' %}nav-item--active{% endif %}">
-                    🔧 Tools
-                </a>
-                <a href="/backtest" class="nav-item {% if request.endpoint == 'tools' %}nav-item--active{% endif %}">
-                    📈 Backtest_2
-                </a>
-            </div>
+                </a> -->
+          <a
+            href="/tools"
+            class="nav-item {% if request.endpoint == 'tools' %}nav-item--active{% endif %}"
+          >
+            🔧 Tools
+          </a>
+          <a
+            href="/backtest"
+            class="nav-item {% if request.endpoint == 'tools' %}nav-item--active{% endif %}"
+          >
+            📈 Backtest
+          </a>
         </div>
-        
-        <!-- Mobile Navigation -->
-        <div class="nav-mobile">
-            <button class="burger-btn" id="burger-btn">
-                <span class="burger-line"></span>
-                <span class="burger-line"></span>
-                <span class="burger-line"></span>
-            </button>
-        </div>
-        
-        <!-- Mobile Menu Overlay -->
-        <div class="mobile-menu-overlay" id="mobile-menu">
-            <div class="mobile-menu-content">
-                <a href="/" class="mobile-nav-item {% if request.endpoint == 'index' %}mobile-nav-item--active{% endif %}">
+      </div>
+
+      <!-- Mobile Navigation -->
+      <div class="nav-mobile">
+        <button class="burger-btn" id="burger-btn">
+          <span class="burger-line"></span>
+          <span class="burger-line"></span>
+          <span class="burger-line"></span>
+        </button>
+      </div>
+
+      <!-- Mobile Menu Overlay -->
+      <div class="mobile-menu-overlay" id="mobile-menu">
+        <div class="mobile-menu-content">
+          <!-- <a href="/" class="mobile-nav-item {% if request.endpoint == 'index' %}mobile-nav-item--active{% endif %}">
                     📈 Backtest
-                </a>
-                <a href="/tools" class="mobile-nav-item {% if request.endpoint == 'tools' %}mobile-nav-item--active{% endif %}">
-                    🔧 Tools
-                </a>
-            </div>
+                </a> -->
+          <a
+            href="/tools"
+            class="mobile-nav-item {% if request.endpoint == 'tools' %}mobile-nav-item--active{% endif %}"
+          >
+            🔧 Tools
+          </a>
         </div>
+      </div>
     </nav>
 
     <!-- Main Content -->
-    <main class="main-content">
-        {% block content %}{% endblock %}
-    </main>
+    <main class="main-content">{% block content %}{% endblock %}</main>
 
     <!-- JavaScript -->
     <script src="{{ url_for('static', filename='js/navigation.js') }}"></script>
     {% block js %}{% endblock %}
-</body>
+  </body>
 </html>
