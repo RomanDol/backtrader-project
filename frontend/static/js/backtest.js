@@ -18,6 +18,11 @@ document.addEventListener("DOMContentLoaded", function () {
   const backtestMessage = document.getElementById("backtest-message")
   const resultsTable = document.getElementById("results-table")
 
+  const strategySelect = document.getElementById("strategy-select")
+  const strategyParamsContainer = document.getElementById(
+    "strategy-params-container"
+  )
+
   console.log("Form elements found:", {
     symbolSelect: !!symbolSelect,
     timeframeSelect: !!timeframeSelect,
@@ -26,6 +31,10 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // Хранилище доступных данных
   let availableData = []
+
+  // Хранилище доступных стратегий
+  let availableStrategies = []
+  let selectedStrategy = null
 
   // Переменные для графиков (инициализируем позже)
   let candlestickChart = null
@@ -181,8 +190,91 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   }
 
+  // === Загрузка списка стратегий ===
+  async function loadStrategies() {
+    try {
+      const response = await fetch("/api/strategies")
+      const data = await response.json()
+
+      if (data.success && data.strategies) {
+        availableStrategies = data.strategies
+
+        // Заполняем select стратегий
+        strategySelect.innerHTML =
+          '<option value="">Select strategy...</option>'
+
+        data.strategies.forEach((strategy, index) => {
+          const option = document.createElement("option")
+          option.value = index
+          option.textContent = strategy.module
+          strategySelect.appendChild(option)
+        })
+
+        console.log(`Loaded ${data.strategies.length} strategies`)
+      }
+    } catch (error) {
+      console.error("Error loading strategies:", error)
+      showMessage("Error loading strategies: " + error.message, "error")
+    }
+  }
+
+  // === Обработчик выбора стратегии ===
+  if (strategySelect) {
+    strategySelect.addEventListener("change", function () {
+      const strategyIndex = this.value
+
+      if (strategyIndex === "") {
+        selectedStrategy = null
+        renderStrategyParams(null)
+        return
+      }
+
+      selectedStrategy = availableStrategies[strategyIndex]
+      console.log("Selected strategy:", selectedStrategy)
+      renderStrategyParams(selectedStrategy)
+    })
+  }
+
+  // === Отрисовка параметров стратегии ===
+  function renderStrategyParams(strategy) {
+    if (!strategyParamsContainer) return
+
+    if (!strategy || !strategy.params) {
+      strategyParamsContainer.innerHTML = ""
+      return
+    }
+
+    let html = ""
+
+    for (const [paramKey, paramConfig] of Object.entries(strategy.params)) {
+      html += `
+        <div class="form-group">
+          <label for="strategy-param-${paramKey}">${paramConfig.label}:</label>
+          <input
+            type="${paramConfig.type}"
+            id="strategy-param-${paramKey}"
+            name="strategy_params[${paramKey}]"
+            value="${paramConfig.default}"
+            min="${paramConfig.min || ""}"
+            max="${paramConfig.max || ""}"
+            step="${paramConfig.step || ""}"
+            required
+          />
+          ${
+            paramConfig.description
+              ? `<small style="color: var(--text-secondary); font-size: 0.85em;">${paramConfig.description}</small>`
+              : ""
+          }
+        </div>
+      `
+    }
+
+    strategyParamsContainer.innerHTML = html
+  }
+
   // Загружаем доступные данные при загрузке страницы
   loadAvailableData()
+  loadStrategies()
 
   // === Обновление таймфреймов при выборе символа ===
   symbolSelect.addEventListener("change", function () {
@@ -306,25 +398,79 @@ document.addEventListener("DOMContentLoaded", function () {
       const timeframe = formData.get("timeframe")
       const startDate = formData.get("start_date")
       const endDate = formData.get("end_date")
+      const initialCash = formData.get("initial_cash")
+      const commission = formData.get("commission")
+
+      // Проверяем что стратегия выбрана
+      if (!selectedStrategy) {
+        showMessage("Please select a strategy", "error")
+        return
+      }
 
       if (!symbol || !timeframe || !startDate || !endDate) {
         showMessage("Please fill all fields", "error")
         return
       }
 
-      // Загружаем данные для графика
-      await loadChartData(symbol, timeframe, startDate, endDate)
+      // Собираем параметры стратегии
+      const strategyParams = {}
+      for (const [key, config] of Object.entries(selectedStrategy.params)) {
+        const value = formData.get(`strategy_params[${key}]`)
+        // Преобразуем в нужный тип
+        if (config.type === "number") {
+          strategyParams[key] = parseFloat(value) || config.default
+        } else {
+          strategyParams[key] = value || config.default
+        }
+      }
 
-      // Здесь будет запуск бэктеста
-      // Пока показываем тестовые результаты
-      displayResults({
-        final_value: 12500.5,
-        profit: 2500.5,
-        profit_percent: 25.01,
-        sharpe_ratio: 1.85,
-        max_drawdown: 8.5,
-        total_trades: 45,
+      console.log("Starting backtest with params:", {
+        symbol,
+        timeframe,
+        startDate,
+        endDate,
+        strategy: selectedStrategy.module,
+        strategyParams,
       })
+
+      showMessage("Running backtest...", "info")
+
+      try {
+        const response = await fetch("/api/backtest", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            symbol: symbol,
+            timeframe: timeframe,
+            start_date: startDate,
+            end_date: endDate,
+            strategy_module: selectedStrategy.module,
+            strategy_class: selectedStrategy.class_name,
+            strategy_params: strategyParams,
+            initial_cash: parseFloat(initialCash),
+            commission: parseFloat(commission),
+          }),
+        })
+
+        const result = await response.json()
+
+        console.log("Backtest result:", result)
+
+        if (result.success) {
+          showMessage("Backtest completed successfully", "success")
+          displayResults(result.results)
+
+          // Загружаем данные для графика
+          await loadChartData(symbol, timeframe, startDate, endDate)
+        } else {
+          showMessage("Backtest failed: " + result.error, "error")
+        }
+      } catch (error) {
+        showMessage("Error running backtest: " + error.message, "error")
+        console.error("Backtest error:", error)
+      }
     })
   }
 

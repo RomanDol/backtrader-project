@@ -39,6 +39,63 @@ class BinanceDataLoader:
         except Exception as e:
             logger.error(f"❌ Ошибка подключения к PostgreSQL: {e}")
             raise
+        
+
+
+
+    def load_data_for_backtest(self, symbol: str, timeframe: str, start_date: str, end_date: str):
+        """
+        Загружает данные из базы для бэктеста
+        
+        Args:
+            symbol: Торговая пара (BTCUSDT)
+            timeframe: Таймфрейм (1m, 5m, 1h и т.д.)
+            start_date: Дата начала (YYYY-MM-DD)
+            end_date: Дата окончания (YYYY-MM-DD)
+            
+        Returns:
+            DataFrame с данными или None
+        """
+        try:
+            import pandas as pd
+            
+            # Определяем имя таблицы
+            table_name = f"{symbol.lower()}_{timeframe}"
+            
+            with self.get_connection() as conn:
+                query = f"""
+                    SELECT 
+                        open_time as datetime,
+                        open,
+                        high,
+                        low,
+                        close,
+                        volume
+                    FROM {table_name}
+                    WHERE open_time >= %s AND open_time <= %s
+                    ORDER BY open_time
+                """
+                
+                df = pd.read_sql_query(
+                    query, 
+                    conn, 
+                    params=(start_date, end_date + ' 23:59:59')
+                )
+                
+                if df.empty:
+                    logger.warning(f"⚠️ Нет данных для {symbol} {timeframe} за период {start_date} - {end_date}")
+                    return None
+                
+                # Преобразуем datetime в индекс
+                df['datetime'] = pd.to_datetime(df['datetime'])
+                df.set_index('datetime', inplace=True)
+                
+                logger.info(f"✅ Загружено {len(df)} свечей из таблицы {table_name}")
+                return df
+                
+        except Exception as e:
+            logger.error(f"❌ Ошибка загрузки данных для бэктеста: {e}")
+            return None
     
     def download_and_parse_zip(self, url: str) -> Tuple[bool, List[List]]:
         """

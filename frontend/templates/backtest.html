@@ -44,6 +44,13 @@ Platform{% endblock %} {% block content %}
 
     <form id="backtest-form">
       <div class="form-group">
+        <label for="strategy-select">Strategy:</label>
+        <select id="strategy-select" name="strategy" required>
+          <option value="">Loading strategies...</option>
+        </select>
+      </div>
+
+      <div class="form-group">
         <label for="symbol-select">Symbol:</label>
         <select id="symbol-select" name="symbol" required>
           <option value="">Select symbol...</option>
@@ -81,6 +88,17 @@ Platform{% endblock %} {% block content %}
         Strategy Settings
       </h3>
 
+      <!-- Динамические параметры стратегии -->
+      <div id="strategy-params-container"></div>
+
+      <hr
+        style="
+          margin: var(--spacing-lg) 0;
+          border: none;
+          border-top: var(--border-width) solid var(--border-color);
+        "
+      />
+
       <div class="form-group">
         <label for="initial-cash">Initial Cash ($):</label>
         <input
@@ -104,32 +122,6 @@ Platform{% endblock %} {% block content %}
           min="0"
           max="5"
           step="0.01"
-          required
-        />
-      </div>
-
-      <div class="form-group">
-        <label for="fast-period">Fast MA Period:</label>
-        <input
-          type="number"
-          id="fast-period"
-          name="fast_period"
-          value="10"
-          min="2"
-          max="50"
-          required
-        />
-      </div>
-
-      <div class="form-group">
-        <label for="slow-period">Slow MA Period:</label>
-        <input
-          type="number"
-          id="slow-period"
-          name="slow_period"
-          value="30"
-          min="5"
-          max="200"
           required
         />
       </div>

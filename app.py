@@ -39,38 +39,78 @@ def backtest_page():
     """Страница тестирования стратегий"""
     return render_template('backtest.html')
 
-@app.route('/api/backtest', methods=['POST'])
-def backtest():
-    """API для запуска бэктеста"""
+
+@app.route('/api/strategies', methods=['GET'])
+def get_strategies():
+    """API для получения списка доступных стратегий"""
     try:
-        data = request.json
-        
-        # Получение параметров
-        initial_cash = float(data.get('initial_cash', 10000))
-        commission = float(data.get('commission', 0.001))
-        fast_period = int(data.get('fast_period', 10))
-        slow_period = int(data.get('slow_period', 30))
-        
-        # Запуск бэктеста
-        results = run_backtest(
-            data_file=None,  # Используем тестовые данные
-            initial_cash=initial_cash,
-            commission=commission,
-            fast_period=fast_period,
-            slow_period=slow_period
-        )
+        from strategies import get_strategies_list
+        strategies = get_strategies_list()
         
         return jsonify({
             'success': True,
-            'results': results
+            'strategies': strategies
         })
-    
     except Exception as e:
         return jsonify({
             'success': False,
             'error': str(e)
-        }), 400
+        }), 500
+    
 
+
+@app.route('/api/backtest', methods=['POST'])
+def backtest():
+    """API для запуска бэктеста"""
+    try:
+        from backend.core.backtest_runner import backtest_runner
+        
+        data = request.json
+        
+        # Получение параметров
+        symbol = data.get('symbol')
+        timeframe = data.get('timeframe')
+        start_date = data.get('start_date')
+        end_date = data.get('end_date')
+        strategy_module = data.get('strategy_module')
+        strategy_class = data.get('strategy_class')
+        initial_cash = float(data.get('initial_cash', 10000))
+        commission = float(data.get('commission', 0.001)) / 100  # Переводим из % в доли
+        
+        # Параметры стратегии
+        strategy_params = data.get('strategy_params', {})
+        
+        # Валидация обязательных полей
+        if not all([symbol, timeframe, start_date, end_date, strategy_module, strategy_class]):
+            return jsonify({
+                'success': False,
+                'error': 'Не все обязательные поля заполнены'
+            }), 400
+        
+        # Запуск бэктеста
+        result = backtest_runner.run_backtest(
+            symbol=symbol,
+            timeframe=timeframe,
+            start_date=start_date,
+            end_date=end_date,
+            strategy_module=strategy_module,
+            strategy_class=strategy_class,
+            strategy_params=strategy_params,
+            initial_cash=initial_cash,
+            commission=commission
+        )
+        
+        return jsonify(result)
+    
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+        
 
 @app.route('/api/upload', methods=['POST'])
 def upload_file():
