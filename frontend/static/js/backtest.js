@@ -17,6 +17,7 @@ document.addEventListener("DOMContentLoaded", function () {
   const backtestForm = document.getElementById("backtest-form")
   const backtestMessage = document.getElementById("backtest-message")
   const resultsTable = document.getElementById("results-table")
+  const loadChartBtn = document.getElementById("load-chart-btn")
 
   const strategySelect = document.getElementById("strategy-select")
   const strategyParamsContainer = document.getElementById(
@@ -56,10 +57,9 @@ document.addEventListener("DOMContentLoaded", function () {
   // === Инициализация графиков (только если элементы существуют) ===
   function initCharts() {
     const candlestickContainer = document.getElementById("candlestick-chart")
-    const equityContainer = document.getElementById("equity-chart")
 
-    if (!candlestickContainer || !equityContainer) {
-      console.warn("Chart containers not found")
+    if (!candlestickContainer) {
+      console.warn("Candlestick chart container not found")
       return
     }
 
@@ -69,7 +69,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     try {
-      // 1. Candlestick Chart
+      // Candlestick Chart
       candlestickChart = LightweightCharts.createChart(candlestickContainer, {
         width: candlestickContainer.clientWidth,
         height: candlestickContainer.clientHeight,
@@ -103,37 +103,7 @@ document.addEventListener("DOMContentLoaded", function () {
         wickDownColor: "#ff4444",
       })
 
-      // 2. Equity Chart
-      equityChart = LightweightCharts.createChart(equityContainer, {
-        width: equityContainer.clientWidth,
-        height: equityContainer.clientHeight,
-        layout: {
-          background: { color: "#0a0e17" },
-          textColor: "#d1d4dc",
-        },
-        grid: {
-          vertLines: { color: "#1e2330" },
-          horzLines: { color: "#1e2330" },
-        },
-        crosshair: {
-          mode: LightweightCharts.CrosshairMode.Normal,
-        },
-        rightPriceScale: {
-          borderColor: "#2e3442",
-        },
-        timeScale: {
-          borderColor: "#2e3442",
-          timeVisible: true,
-          secondsVisible: false,
-        },
-      })
-
-      equitySeries = equityChart.addLineSeries({
-        color: "#00ff88",
-        lineWidth: 2,
-      })
-
-      console.log("Charts initialized successfully")
+      console.log("Candlestick chart initialized successfully")
 
       // === Обработка изменения размера окна ===
       window.addEventListener("resize", () => {
@@ -143,15 +113,9 @@ document.addEventListener("DOMContentLoaded", function () {
             height: candlestickContainer.clientHeight,
           })
         }
-        if (equityChart) {
-          equityChart.applyOptions({
-            width: equityContainer.clientWidth,
-            height: equityContainer.clientHeight,
-          })
-        }
       })
     } catch (error) {
-      console.error("Error initializing charts:", error)
+      console.error("Error initializing chart:", error)
     }
   }
 
@@ -273,6 +237,24 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   // Загружаем доступные данные при загрузке страницы
+
+  // === Обработчик кнопки Load Chart ===
+  if (loadChartBtn) {
+    loadChartBtn.addEventListener("click", async function () {
+      const symbol = symbolSelect.value
+      const timeframe = timeframeSelect.value
+      const startDate = startDateInput.value
+      const endDate = endDateInput.value
+
+      if (!symbol || !timeframe || !startDate || !endDate) {
+        showMessage("Please select symbol, timeframe and dates", "error")
+        return
+      }
+
+      await loadChartData(symbol, timeframe, startDate, endDate)
+    })
+  }
+
   loadAvailableData()
   loadStrategies()
 
@@ -366,14 +348,10 @@ document.addEventListener("DOMContentLoaded", function () {
         console.log("Loaded candles:", candles.length)
 
         // Обновляем график свечей
-        candlestickSeries.setData(candles)
-
-        // Генерируем equity curve (пока тестовую)
-        const equityData = candles.map((candle, idx) => ({
-          time: candle.time,
-          value: 10000 + idx * 10,
-        }))
-        equitySeries.setData(equityData)
+        if (candlestickSeries) {
+          candlestickSeries.setData(candles)
+          console.log("Chart updated with", candles.length, "candles")
+        }
 
         showMessage(
           `Loaded ${candles.length} candles for ${symbol} (${timeframe})`,

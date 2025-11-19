@@ -76,7 +76,7 @@ class BacktestRunner:
                 }
             
             # Добавляем стратегию с параметрами
-            strat_instance = cerebro.addstrategy(StrategyClass, **strategy_params, printlog=True)
+            strat_instance = cerebro.addstrategy(StrategyClass, **strategy_params, printlog=False)
             
             # Подготавливаем данные для backtrader
             data = bt.feeds.PandasData(dataname=df)

@@ -88,7 +88,7 @@ class SimpleMovingAverageStrategy(BaseStrategy):
         self.order = None
 
     def next(self):
-        self.log(f'Закрытие: {self.dataclose[0]:.2f}')
+        # self.log(f'Закрытие: {self.dataclose[0]:.2f}')
 
         if self.order:
             return
