@@ -6,6 +6,7 @@ import logging
 import psycopg2
 from typing import List, Dict, Any
 from dotenv import load_dotenv
+import json
 
 load_dotenv()
 
@@ -66,9 +67,9 @@ class BacktestResultsManager:
                         INSERT INTO current_trades (
                             entry_date, entry_price, entry_size, side,
                             exit_date, exit_price, pnl, pnl_percent,
-                            commission, bars_held, mae, mfe
+                            commission, bars_held, mae, mfe, trade_history
                         ) VALUES (
-                            %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+                            %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
                         )
                     """, (
                         trade.get('entry_date'),
@@ -82,7 +83,8 @@ class BacktestResultsManager:
                         trade.get('commission'),
                         trade.get('bars_held'),
                         trade.get('mae'),
-                        trade.get('mfe')
+                        trade.get('mfe'),
+                        json.dumps(trade.get('trade_history')) 
                     ))
                 
                 conn.commit()

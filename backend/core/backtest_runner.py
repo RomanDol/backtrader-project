@@ -130,54 +130,55 @@ class BacktestRunner:
             }
     
     def _collect_trades(self, strat) -> list:
-            """Собирает сделки из списка закрытых сделок стратегии"""
-            trades_list = []
-            
-            if hasattr(strat, 'trade_list'):
-                for trade in strat.trade_list:
-                    # Проверяем наличие history
-                    if not hasattr(trade, 'history') or not trade.history or len(trade.history) < 2:
-                        logger.warning(f"⚠️ Trade без history, пропускаем")
-                        continue
-                    
-                    # Получаем события входа и выхода
-                    entry_event = trade.history[0]
-                    exit_event = trade.history[-1]
-                    
-                    # Получаем размер и направление из entry
-                    entry_size = entry_event['status']['size']
-                    side = 'LONG' if entry_size > 0 else 'SHORT'
-                    
-                    # Получаем данные
-                    entry_date = bt.num2date(entry_event['status']['dt']).replace(tzinfo=None)
-                    entry_price = entry_event['event']['price']
-                    entry_commission = entry_event['event']['commission']
-                    
-                    exit_date = bt.num2date(exit_event['status']['dt']).replace(tzinfo=None)
-                    exit_price = exit_event['event']['price']
-                    exit_commission = exit_event['event']['commission']
-                    
-                    total_commission = entry_commission + exit_commission
-                    
-                    trade_data = {
-                        'entry_date': entry_date,
-                        'entry_price': entry_price,
-                        'entry_size': abs(entry_size),
-                        'side': side,
-                        'exit_date': exit_date,
-                        'exit_price': exit_price,
-                        'pnl': trade.pnl,
-                        'pnl_percent': (trade.pnl / abs(entry_event['status']['value'])) * 100 if entry_event['status']['value'] != 0 else 0,
-                        'commission': total_commission,
-                        'bars_held': trade.barlen,
-                        'mae': None,
-                        'mfe': None
-                    }
-                    trades_list.append(trade_data)
+        """Собирает сделки из списка закрытых сделок стратегии"""
+        trades_list = []
+        
+        if hasattr(strat, 'trade_list'):
+            for trade in strat.trade_list:
+                # Теперь trade - это словарь!
+                if 'history' not in trade or not trade['history'] or len(trade['history']) < 2:
+                    logger.warning(f"⚠️ Trade без history, пропускаем")
+                    continue
                 
-                logger.info(f"📊 Собрано сделок: {len(trades_list)}")
+                # Получаем события входа и выхода
+                entry_event = trade['history'][0]
+                exit_event = trade['history'][-1]
+                
+                # Получаем размер и направление из entry
+                entry_size = entry_event['status']['size']
+                side = 'LONG' if entry_size > 0 else 'SHORT'
+                
+                # Получаем данные
+                entry_date = bt.num2date(entry_event['status']['dt']).replace(tzinfo=None)
+                entry_price = entry_event['event']['price']
+                entry_commission = entry_event['event']['commission']
+                
+                exit_date = bt.num2date(exit_event['status']['dt']).replace(tzinfo=None)
+                exit_price = exit_event['event']['price']
+                exit_commission = exit_event['event']['commission']
+                
+                total_commission = entry_commission + exit_commission
+                
+                trade_data = {
+                    'entry_date': entry_date,
+                    'entry_price': entry_price,
+                    'entry_size': abs(entry_size),
+                    'side': side,
+                    'exit_date': exit_date,
+                    'exit_price': exit_price,
+                    'pnl': trade['pnl'],  # ← из словаря!
+                    'pnl_percent': (trade['pnl'] / abs(entry_event['status']['value'])) * 100 if entry_event['status']['value'] != 0 else 0,
+                    'commission': total_commission,
+                    'bars_held': trade['barlen'],  # ← из словаря!
+                    'mae': None,
+                    'mfe': None,
+                    'trade_history': trade['history']
+                }
+                trades_list.append(trade_data)
             
-            return trades_list
+            logger.info(f"📊 Собрано сделок: {len(trades_list)}")
+        
+        return trades_list
 
     
     
