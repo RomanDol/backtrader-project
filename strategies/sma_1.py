@@ -90,14 +90,18 @@ class SimpleMovingAverageStrategy(BaseStrategy):
     def next(self):
         # self.log(f'Закрытие: {self.dataclose[0]:.2f}')
 
-        if self.order:
-            return
+        if self.crossover > 0:  # Сигнал LONG
+            if self.position.size < 0:  # Есть SHORT позиция
+                self.close()  # Закрываем SHORT
+                self.buy(size=3)  # Открываем LONG
+            elif self.position.size == 0:  # Нет позиции
+                self.buy(size=3)  # Открываем LONG
+            # Если self.position.size > 0 (уже LONG) - ничего не делаем
 
-        if not self.position:
-            if self.crossover > 0:
-                self.log(f'СИГНАЛ НА ПОКУПКУ, Цена: {self.dataclose[0]:.2f}')
-                self.order = self.buy()
-        else:
-            if self.crossover < 0:
-                self.log(f'СИГНАЛ НА ПРОДАЖУ, Цена: {self.dataclose[0]:.2f}')
-                self.order = self.sell()
+        elif self.crossover < 0:  # Сигнал SHORT
+            if self.position.size > 0:  # Есть LONG позиция
+                self.close()  # Закрываем LONG
+                self.sell(size=3)  # Открываем SHORT
+            elif self.position.size == 0:  # Нет позиции
+                self.sell(size=3)  # Открываем SHORT
+            # Если self.position.size < 0 (уже SHORT) - ничего не делаем

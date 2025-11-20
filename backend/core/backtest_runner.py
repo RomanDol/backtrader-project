@@ -65,7 +65,7 @@ class BacktestRunner:
             logger.info(f"✅ Загружено {len(df)} свечей")
             
             # Создаем Cerebro
-            cerebro = bt.Cerebro()
+            cerebro = bt.Cerebro(tradehistory=True)
             
             # Загружаем класс стратегии
             StrategyClass = get_strategy_class(strategy_module, strategy_class)
@@ -129,65 +129,56 @@ class BacktestRunner:
                 'error': str(e)
             }
     
-   #  def _collect_trades(self, strat) -> list:
-   #      """Собирает информацию о сделках"""
-   #      trades_list = []
-        
-   #      if hasattr(strat, '_trades'):
-   #          for trade in strat._trades:
-   #              if trade.isclosed:
-   #                  trade_data = {
-   #                      'entry_date': bt.num2date(trade.dtopen).replace(tzinfo=None),
-   #                      'entry_price': trade.price,
-   #                      'entry_size': abs(trade.size),
-   #                      'side': 'LONG' if trade.size > 0 else 'SHORT',
-   #                      'exit_date': bt.num2date(trade.dtclose).replace(tzinfo=None),
-   #                      'exit_price': trade.priceexit,
-   #                      'pnl': trade.pnl,
-   #                      'pnl_percent': (trade.pnl / (trade.price * abs(trade.size))) * 100,
-   #                      'commission': trade.commission,
-   #                      'bars_held': trade.barlen,
-   #                      'mae': None,
-   #                      'mfe': None
-   #                  }
-   #                  trades_list.append(trade_data)
-        
-   #      return trades_list
-
-
     def _collect_trades(self, strat) -> list:
-        """Собирает сделки из списка закрытых сделок стратегии"""
-        trades_list = []
-        
-        if hasattr(strat, 'trade_list'):
-            for trade in strat.trade_list:
-                # Получаем размер через ref
-                size = 1.0  # Дефолтное значение
-                
-                # Пытаемся найти размер позиции
-                if hasattr(trade, 'ref'):
-                    # trade.ref содержит ссылку на первый ордер
-                    size = 1.0  # Временно ставим 1
-                
-                trade_data = {
-                    'entry_date': bt.num2date(trade.dtopen).replace(tzinfo=None),
-                    'entry_price': trade.price,
-                    'entry_size': size,
-                    'side': 'LONG',  # Временно
-                    'exit_date': bt.num2date(trade.dtclose).replace(tzinfo=None),
-                    'exit_price': trade.price + (trade.pnl / size) if size != 0 else trade.price,
-                    'pnl': trade.pnl,
-                    'pnl_percent': (trade.pnl / (trade.price * size)) * 100 if (trade.price * size) != 0 else 0,
-                    'commission': trade.commission,
-                    'bars_held': trade.barlen,
-                    'mae': None,
-                    'mfe': None
-                }
-                trades_list.append(trade_data)
+            """Собирает сделки из списка закрытых сделок стратегии"""
+            trades_list = []
             
-            logger.info(f"📊 Собрано сделок: {len(trades_list)}")
-        
-        return trades_list
+            if hasattr(strat, 'trade_list'):
+                for trade in strat.trade_list:
+                    # Проверяем наличие history
+                    if not hasattr(trade, 'history') or not trade.history or len(trade.history) < 2:
+                        logger.warning(f"⚠️ Trade без history, пропускаем")
+                        continue
+                    
+                    # Получаем события входа и выхода
+                    entry_event = trade.history[0]
+                    exit_event = trade.history[-1]
+                    
+                    # Получаем размер и направление из entry
+                    entry_size = entry_event['status']['size']
+                    side = 'LONG' if entry_size > 0 else 'SHORT'
+                    
+                    # Получаем данные
+                    entry_date = bt.num2date(entry_event['status']['dt']).replace(tzinfo=None)
+                    entry_price = entry_event['event']['price']
+                    entry_commission = entry_event['event']['commission']
+                    
+                    exit_date = bt.num2date(exit_event['status']['dt']).replace(tzinfo=None)
+                    exit_price = exit_event['event']['price']
+                    exit_commission = exit_event['event']['commission']
+                    
+                    total_commission = entry_commission + exit_commission
+                    
+                    trade_data = {
+                        'entry_date': entry_date,
+                        'entry_price': entry_price,
+                        'entry_size': abs(entry_size),
+                        'side': side,
+                        'exit_date': exit_date,
+                        'exit_price': exit_price,
+                        'pnl': trade.pnl,
+                        'pnl_percent': (trade.pnl / abs(entry_event['status']['value'])) * 100 if entry_event['status']['value'] != 0 else 0,
+                        'commission': total_commission,
+                        'bars_held': trade.barlen,
+                        'mae': None,
+                        'mfe': None
+                    }
+                    trades_list.append(trade_data)
+                
+                logger.info(f"📊 Собрано сделок: {len(trades_list)}")
+            
+            return trades_list
+
     
     
     def _format_results(self, strat, initial_value, final_value, trades_count) -> Dict:
