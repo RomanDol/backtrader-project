@@ -219,9 +219,9 @@ document.addEventListener("DOMContentLoaded", function () {
             id="strategy-param-${paramKey}"
             name="strategy_params[${paramKey}]"
             value="${paramConfig.default}"
-            min="${paramConfig.min || ""}"
-            max="${paramConfig.max || ""}"
-            step="${paramConfig.step || ""}"
+            ${paramConfig.min !== undefined ? `min="${paramConfig.min}"` : ""}
+            ${paramConfig.max !== undefined ? `max="${paramConfig.max}"` : ""}
+            step="any"
             required
           />
           ${

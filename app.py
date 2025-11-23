@@ -79,6 +79,10 @@ def backtest():
         
         # Параметры стратегии
         strategy_params = data.get('strategy_params', {})
+        print(f"=== DEBUG APP.PY ===")
+        print(f"strategy_params: {strategy_params}")
+        print(f"sar_timeframe в params: {strategy_params.get('sar_timeframe')}")
+        print(f"=== END DEBUG ===")
         
         # Валидация обязательных полей
         if not all([symbol, timeframe, start_date, end_date, strategy_module, strategy_class]):

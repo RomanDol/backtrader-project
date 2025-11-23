@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 class BacktestRunner:
     """Класс для запуска бэктестов"""
-    
+        
     def run_backtest(
         self,
         symbol: str,
@@ -63,6 +63,17 @@ class BacktestRunner:
                 }
             
             logger.info(f"✅ Загружено {len(df)} свечей")
+            logger.info(f"📅 Период данных: {df.index[0]} - {df.index[-1]}")
+            logger.info(f"📊 Первые строки:\n{df.head()}")
+
+                        # ОТЛАДКА
+            print(f"\n=== DEBUG DATA ===")
+            print(f"DataFrame shape: {df.shape}")
+            print(f"DataFrame index type: {type(df.index)}")
+            print(f"DataFrame columns: {df.columns.tolist()}")
+            print(f"First row:\n{df.iloc[0]}")
+            print(f"DataFrame head:\n{df.head()}")
+            print(f"=== END DEBUG ===\n")
             
             # Создаем Cerebro
             cerebro = bt.Cerebro(tradehistory=True)
@@ -76,13 +87,62 @@ class BacktestRunner:
                 }
             
             # Добавляем стратегию с параметрами
-            strat_instance = cerebro.addstrategy(StrategyClass, **strategy_params, printlog=False)
+            strat_instance = cerebro.addstrategy(StrategyClass, **strategy_params, printlog=True)
             
             # Подготавливаем данные для backtrader
-            data = bt.feeds.PandasData(dataname=df)
+            data = bt.feeds.PandasData(
+               dataname=df,
+               datetime=None,
+               open='open',
+               high='high',
+               low='low',
+               close='close',
+               volume='volume',
+               openinterest=-1
+            )
             cerebro.adddata(data)
-
             
+            # Проверяем есть ли параметр sar_timeframe в стратегии
+            sar_timeframe = strategy_params.get('sar_timeframe')
+            print(f"=== DEBUG RUNNER ===")
+            print(f"Main timeframe: {timeframe}")
+            print(f"SAR timeframe: {sar_timeframe}")
+            print(f"Condition: {sar_timeframe and sar_timeframe != timeframe}")
+            print(f"=== END DEBUG ===")
+
+            if sar_timeframe and sar_timeframe != timeframe:
+               print(f"📊 Загрузка данных для SAR таймфрейма: {symbol} {sar_timeframe}")
+               df_sar = binance_data_loader.load_data_for_backtest(
+                  symbol=symbol,
+                  timeframe=sar_timeframe,
+                  start_date=start_date,
+                  end_date=end_date
+               )
+               
+               print(f"df_sar is None: {df_sar is None}")
+               print(f"df_sar.empty: {df_sar.empty if df_sar is not None else 'N/A'}")
+               
+               if df_sar is not None and not df_sar.empty:
+                  print(f"✅ Загружено {len(df_sar)} свечей (SAR таймфрейм)")
+                  print(f"SAR DataFrame shape: {df_sar.shape}")
+                  data_sar = bt.feeds.PandasData(
+                     dataname=df_sar,
+                     datetime=None,
+                     open='open',
+                     high='high',
+                     low='low',
+                     close='close',
+                     volume='volume',
+                     openinterest=-1
+                  )
+                  cerebro.adddata(data_sar)
+                  print("✅ SAR data feed добавлен в cerebro")
+               else:
+                   print(f"⚠️ Данные для SAR таймфрейма не найдены")
+                   return {
+                       'success': False,
+                       'error': f'Нет данных для SAR таймфрейма {sar_timeframe}. Загрузите данные через Tools.'
+                   }
             # Настройка брокера
             cerebro.broker.setcash(initial_cash)
             cerebro.broker.setcommission(commission=commission)
