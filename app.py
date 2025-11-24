@@ -8,6 +8,9 @@ import pandas as pd
 from backend.core.binance_symbols import binance_symbols_manager
 from backend.core.binance_data_loader import binance_data_loader
 
+
+
+
 app = Flask(__name__, 
             template_folder='frontend/templates',
             static_folder='frontend/static')

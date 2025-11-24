@@ -66,14 +66,7 @@ class BacktestRunner:
             logger.info(f"📅 Период данных: {df.index[0]} - {df.index[-1]}")
             logger.info(f"📊 Первые строки:\n{df.head()}")
 
-                        # ОТЛАДКА
-            print(f"\n=== DEBUG DATA ===")
-            print(f"DataFrame shape: {df.shape}")
-            print(f"DataFrame index type: {type(df.index)}")
-            print(f"DataFrame columns: {df.columns.tolist()}")
-            print(f"First row:\n{df.iloc[0]}")
-            print(f"DataFrame head:\n{df.head()}")
-            print(f"=== END DEBUG ===\n")
+
             
             # Создаем Cerebro
             cerebro = bt.Cerebro(tradehistory=True)
@@ -87,7 +80,7 @@ class BacktestRunner:
                 }
             
             # Добавляем стратегию с параметрами
-            strat_instance = cerebro.addstrategy(StrategyClass, **strategy_params, printlog=True)
+            strat_instance = cerebro.addstrategy(StrategyClass, **strategy_params, printlog=False)
             
             # Подготавливаем данные для backtrader
             data = bt.feeds.PandasData(
@@ -232,7 +225,8 @@ class BacktestRunner:
                     'bars_held': trade['barlen'],  # ← из словаря!
                     'mae': None,
                     'mfe': None,
-                    'trade_history': trade['history']
+                    'trade_history': trade['history'],
+                    'exit_reason': trade.get('exit_reason', 'UNKNOWN'),
                 }
                 trades_list.append(trade_data)
             
