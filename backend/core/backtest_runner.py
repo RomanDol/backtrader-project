@@ -225,7 +225,10 @@ class BacktestRunner:
                     'bars_held': trade['barlen'],  # ← из словаря!
                     'mae': None,
                     'mfe': None,
-                    'trade_history': trade['history'],
+                    'trade_history': {
+                        'events': trade['history'],
+                        'custom': trade.get('custom', {})
+                    },
                     'exit_reason': trade.get('exit_reason', 'UNKNOWN'),
                 }
                 trades_list.append(trade_data)

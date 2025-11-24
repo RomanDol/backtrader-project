@@ -10,6 +10,11 @@ class BaseStrategy(bt.Strategy):
     def __init__(self):
         self.trades_data = []
         self.trade_list = []  # Список для отслеживания сделок
+        self.pending_trade_data = {}  # Новый словарь для кастомных данных
+
+    def add_trade_data(self, key, value):
+        """Добавляет кастомное поле к текущей сделке"""
+        self.pending_trade_data[key] = value
     
     def log(self, txt, dt=None):
         if self.params.printlog:
@@ -83,5 +88,7 @@ class BaseStrategy(bt.Strategy):
                         'event': event_dict
                     }
                     trade_data['history'].append(event_data)
+            trade_data['custom'] = self.pending_trade_data.copy()
+            self.pending_trade_data = {}  # Очищаем для следующей сделки
             
             self.trade_list.append(trade_data)
