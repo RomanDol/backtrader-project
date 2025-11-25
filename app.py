@@ -60,7 +60,61 @@ def get_strategies():
             'error': str(e)
         }), 500
     
-
+@app.route('/api/get_trades', methods=['GET'])
+def get_trades():
+    """Получение сделок из последнего бэктеста"""
+    try:
+        import psycopg2
+        
+        DB_CONFIG = {
+            'host': os.getenv('POSTGRES_HOST', 'localhost'),
+            'port': int(os.getenv('POSTGRES_PORT', 5432)),
+            'database': os.getenv('POSTGRES_DATABASE', 'backtrader'),
+            'user': os.getenv('POSTGRES_USER'),
+            'password': os.getenv('POSTGRES_PASSWORD')
+        }
+        
+        conn = psycopg2.connect(**DB_CONFIG)
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            SELECT 
+                EXTRACT(EPOCH FROM entry_date) as entry_time,
+                EXTRACT(EPOCH FROM exit_date) as exit_time,
+                entry_price,
+                exit_price,
+                side,
+                pnl
+            FROM current_trades
+            ORDER BY entry_date ASC
+        """)
+        
+        rows = cursor.fetchall()
+        
+        trades = []
+        for row in rows:
+            trades.append({
+                'entry_time': int(row[0]),
+                'exit_time': int(row[1]),
+                'entry_price': float(row[2]),
+                'exit_price': float(row[3]),
+                'side': row[4],
+                'pnl': float(row[5])
+            })
+        
+        cursor.close()
+        conn.close()
+        
+        return jsonify({
+            'status': 'success',
+            'trades': trades
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
 
 @app.route('/api/backtest', methods=['POST'])
 def backtest():

@@ -91,7 +91,7 @@ document.addEventListener("DOMContentLoaded", function () {
           borderColor: "#2e3442",
           timeVisible: true,
           secondsVisible: false,
-        },
+        }
       })
 
       candlestickSeries = candlestickChart.addCandlestickSeries({
@@ -440,6 +440,17 @@ document.addEventListener("DOMContentLoaded", function () {
           showMessage("Backtest completed successfully", "success")
           displayResults(result.results)
 
+          if (result.success) {
+            showMessage("Backtest completed successfully", "success")
+            displayResults(result.results)
+
+            // Загружаем данные для графика
+            await loadChartData(symbol, timeframe, startDate, endDate)
+
+            // Добавь эту строку:
+            await loadAndDisplayTrades()
+          }
+
           // Загружаем данные для графика
           await loadChartData(symbol, timeframe, startDate, endDate)
         } else {
@@ -521,5 +532,52 @@ document.addEventListener("DOMContentLoaded", function () {
     `
 
     resultsContainer.style.display = "block"
+  }
+
+  async function loadAndDisplayTrades() {
+    try {
+      const response = await fetch("/api/get_trades")
+      const result = await response.json()
+
+      if (result.status === "success" && result.trades.length > 0) {
+        const markers = []
+
+        result.trades.forEach((trade) => {
+          // Маркер входа
+          markers.push({
+            time: trade.entry_time,
+            position: trade.side === "LONG" ? "belowBar" : "aboveBar",
+            color: trade.side === "LONG" ? "#FFFF33" : "#FF00FF",
+            shape: trade.side === "LONG" ? "arrowUp" : "arrowDown",
+            text: trade.side === "LONG" ? "LNG" : "SHT",
+          })
+
+          // Маркер выхода
+          markers.push({
+            time: trade.exit_time,
+            position: trade.side === "LONG" ? "aboveBar" : "belowBar",
+            color: trade.side === "LONG" ? "#FFFF33" : "#FF00FF",
+            // position: trade.pnl >= 0 ? "aboveBar" : "belowBar",
+            // color: trade.pnl >= 0 ? "#00ff88" : "#ff4444",
+            shape: "circle",
+            text: "✖",
+            // text: trade.pnl >= 0 ? "✓" : "✗",
+          })
+        })
+
+        // Сортируем по времени (обязательно для lightweight-charts)
+        markers.sort((a, b) => a.time - b.time)
+
+        // Устанавливаем маркеры на график
+        if (candlestickSeries) {
+          candlestickSeries.setMarkers(markers)
+          console.log(
+            `Displayed ${markers.length} markers for ${result.trades.length} trades`
+          )
+        }
+      }
+    } catch (error) {
+      console.error("Error loading trades:", error)
+    }
   }
 })

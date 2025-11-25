@@ -67,9 +67,9 @@ class BacktestResultsManager:
                         INSERT INTO current_trades (
                             entry_date, entry_price, entry_size, side,
                             exit_date, exit_price, pnl, pnl_percent,
-                            commission, bars_held, mae, mfe, trade_history, exit_reason
+                            commission, bars_held, trade_history
                         ) VALUES (
-                            %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+                            %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
                         )
                     """, (
                         trade.get('entry_date'),
@@ -82,10 +82,7 @@ class BacktestResultsManager:
                         trade.get('pnl_percent'),
                         trade.get('commission'),
                         trade.get('bars_held'),
-                        trade.get('mae'),
-                        trade.get('mfe'),
-                        json.dumps(trade.get('trade_history')),
-                        trade.get('exit_reason', 'UNKNOWN') 
+                        json.dumps(trade.get('trade_history'))
                     ))
                 
                 conn.commit()
