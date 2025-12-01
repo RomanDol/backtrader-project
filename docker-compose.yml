@@ -30,16 +30,17 @@ services:
     restart: unless-stopped
 
   grafana:
-    image: grafana/grafana:latest
-    ports:
-      - "3000:3000"
-    environment:
-      - GF_SECURITY_ADMIN_PASSWORD=admin
-    volumes:
-      - grafana_data:/var/lib/grafana
-    restart: unless-stopped
-    depends_on:
-      - postgres
+      image: grafana/grafana:latest
+      ports:
+        - "3000:3000"
+      environment:
+        - GF_SECURITY_ADMIN_PASSWORD=admin
+        - GF_SECURITY_ALLOW_EMBEDDING=true
+      volumes:
+        - grafana_data:/var/lib/grafana
+      restart: unless-stopped
+      depends_on:
+        - postgres
 
 volumes:
   postgres_data:
