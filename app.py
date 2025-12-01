@@ -7,7 +7,7 @@ import pandas as pd
 # from strategy import run_backtest
 from backend.core.binance_symbols import binance_symbols_manager
 from backend.core.binance_data_loader import binance_data_loader
-
+from auth import auth_manager
 
 
 
@@ -25,7 +25,11 @@ if not os.path.exists(UPLOAD_FOLDER):
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max
 
-
+@app.before_request
+def auth_middleware():
+    """Проверка авторизации для всех запросов"""
+    return auth_manager.require_auth()
+    
 @app.context_processor
 def inject_grafana():
     dashboards_str = os.getenv('DASHBOARDS', '{}')
