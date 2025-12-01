@@ -26,10 +26,15 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max
 
 
+@app.context_processor
+def inject_grafana():
+    dashboards_str = os.getenv('DASHBOARDS', '{}')
+    return {'dashboards': json.loads(dashboards_str)}
+
 @app.route('/')
 def index():
     """Главная страница"""
-    return render_template('index.html')
+    return render_template('backtest.html')
 
 
 @app.route('/tools')
