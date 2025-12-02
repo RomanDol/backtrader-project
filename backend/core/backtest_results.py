@@ -66,7 +66,7 @@ class BacktestResultsManager:
                     cursor.execute("""
                         INSERT INTO current_trades (
                             entry_date, entry_price, entry_size, side,
-                            exit_date, exit_price, pnl, pnl_percent,
+                        exit_date, exit_price, pnl, pnl_percent,
                             commission, bars_held, trade_history
                         ) VALUES (
                             %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s

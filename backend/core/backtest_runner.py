@@ -1,8 +1,10 @@
 """
-Модуль для запуска бэктестов
+Модуль для запуска бэктестов на VectorBT
 """
 import logging
-import backtrader as bt
+import pandas as pd
+import numpy as np
+import vectorbt as vbt
 from datetime import datetime
 from typing import Dict, Any
 from .binance_data_loader import binance_data_loader
@@ -11,8 +13,9 @@ from strategies import get_strategy_class
 
 logger = logging.getLogger(__name__)
 
+
 class BacktestRunner:
-    """Класс для запуска бэктестов"""
+    """Класс для запуска бэктестов на VectorBT"""
         
     def run_backtest(
         self,
@@ -28,20 +31,6 @@ class BacktestRunner:
     ) -> Dict[str, Any]:
         """
         Запускает бэктест с указанными параметрами
-        
-        Args:
-            symbol: Торговая пара (например, BTCUSDT)
-            timeframe: Таймфрейм (например, 1h)
-            start_date: Дата начала (YYYY-MM-DD)
-            end_date: Дата окончания (YYYY-MM-DD)
-            strategy_module: Имя модуля стратегии
-            strategy_class: Имя класса стратегии
-            strategy_params: Параметры стратегии
-            initial_cash: Начальный капитал
-            commission: Комиссия
-            
-        Returns:
-            Dict с результатами бэктеста
         """
         try:
             # Очищаем таблицу результатов
@@ -63,13 +52,6 @@ class BacktestRunner:
                 }
             
             logger.info(f"✅ Загружено {len(df)} свечей")
-            logger.info(f"📅 Период данных: {df.index[0]} - {df.index[-1]}")
-            logger.info(f"📊 Первые строки:\n{df.head()}")
-
-
-            
-            # Создаем Cerebro
-            cerebro = bt.Cerebro(tradehistory=True)
             
             # Загружаем класс стратегии
             StrategyClass = get_strategy_class(strategy_module, strategy_class)
@@ -79,99 +61,68 @@ class BacktestRunner:
                     'error': f'Стратегия {strategy_class} не найдена'
                 }
             
-            # Добавляем стратегию с параметрами
-            strat_instance = cerebro.addstrategy(StrategyClass, **strategy_params, printlog=False)
+            # Создаём экземпляр стратегии
+            strategy = StrategyClass(**strategy_params)
             
-            # Подготавливаем данные для backtrader
-            data = bt.feeds.PandasData(
-               dataname=df,
-               datetime=None,
-               open='open',
-               high='high',
-               low='low',
-               close='close',
-               volume='volume',
-               openinterest=-1
-            )
-            cerebro.adddata(data)
+            # Загружаем данные для SAR если указан другой таймфрейм
+            df_sar = None
+            sar_timeframe = strategy_params.get('sar_timeframe', '')
             
-            # Проверяем есть ли параметр sar_timeframe в стратегии
-            sar_timeframe = strategy_params.get('sar_timeframe')
-            print(f"=== DEBUG RUNNER ===")
-            print(f"Main timeframe: {timeframe}")
-            print(f"SAR timeframe: {sar_timeframe}")
-            print(f"Condition: {sar_timeframe and sar_timeframe != timeframe}")
-            print(f"=== END DEBUG ===")
-
             if sar_timeframe and sar_timeframe != timeframe:
-               print(f"📊 Загрузка данных для SAR таймфрейма: {symbol} {sar_timeframe}")
-               df_sar = binance_data_loader.load_data_for_backtest(
-                  symbol=symbol,
-                  timeframe=sar_timeframe,
-                  start_date=start_date,
-                  end_date=end_date
-               )
-               
-               print(f"df_sar is None: {df_sar is None}")
-               print(f"df_sar.empty: {df_sar.empty if df_sar is not None else 'N/A'}")
-               
-               if df_sar is not None and not df_sar.empty:
-                  print(f"✅ Загружено {len(df_sar)} свечей (SAR таймфрейм)")
-                  print(f"SAR DataFrame shape: {df_sar.shape}")
-                  data_sar = bt.feeds.PandasData(
-                     dataname=df_sar,
-                     datetime=None,
-                     open='open',
-                     high='high',
-                     low='low',
-                     close='close',
-                     volume='volume',
-                     openinterest=-1
-                  )
-                  cerebro.adddata(data_sar)
-                  print("✅ SAR data feed добавлен в cerebro")
-               else:
-                   print(f"⚠️ Данные для SAR таймфрейма не найдены")
-                   return {
-                       'success': False,
-                       'error': f'Нет данных для SAR таймфрейма {sar_timeframe}. Загрузите данные через Tools.'
-                   }
-            # Настройка брокера
-            cerebro.broker.setcash(initial_cash)
-            cerebro.broker.setcommission(commission=commission)
+                logger.info(f"📊 Загрузка SAR данных: {symbol} {sar_timeframe}")
+                df_sar = binance_data_loader.load_data_for_backtest(
+                    symbol=symbol,
+                    timeframe=sar_timeframe,
+                    start_date=start_date,
+                    end_date=end_date
+                )
+                
+                if df_sar is None or df_sar.empty:
+                    return {
+                        'success': False,
+                        'error': f'Нет данных для SAR таймфрейма {sar_timeframe}'
+                    }
+                
+                logger.info(f"✅ Загружено {len(df_sar)} SAR свечей")
             
-            # Добавление анализаторов
-            cerebro.addanalyzer(bt.analyzers.SharpeRatio, _name='sharpe')
-            cerebro.addanalyzer(bt.analyzers.DrawDown, _name='drawdown')
-            cerebro.addanalyzer(bt.analyzers.Returns, _name='returns')
-            cerebro.addanalyzer(bt.analyzers.TradeAnalyzer, _name='trades')
+            # Генерируем сигналы
+            signals = strategy.generate_signals(df, df_sar)
             
-            # Запуск бэктеста
-            initial_value = cerebro.broker.getvalue()
-            logger.info(f'💰 Начальный капитал: ${initial_value:.2f}')
+            # Получаем параметры выхода
+            exit_params = strategy.get_exit_params()
             
-            results = cerebro.run()
-            strat = results[0]
+            # Точки входа/выхода
+            entries_long = signals == 1
+            entries_short = signals == -1
+            exits_long = signals != 1
+            exits_short = signals != -1
             
-            final_value = cerebro.broker.getvalue()
-            logger.info(f'💰 Финальный капитал: ${final_value:.2f}')
+            # Запуск VectorBT Portfolio
+            pf = vbt.Portfolio.from_signals(
+                close=df['close'],
+                entries=entries_long,
+                exits=exits_long,
+                short_entries=entries_short,
+                short_exits=exits_short,
+                init_cash=initial_cash,
+                fees=commission,
+                sl_stop=exit_params['stop_loss'],
+                tp_stop=exit_params['take_profit'],
+                size=strategy_params.get('quote', initial_cash),
+                size_type='value',
+                freq=timeframe
+)
             
-            # Сбор сделок
-            trades_list = self._collect_trades(strat)
-
+            # Собираем сделки
+            trades_list = self._collect_trades(pf, df)
             
-            # Сохранение сделок в базу
+            # Сохраняем сделки в базу
             if trades_list:
                 backtest_results_manager.save_trades(trades_list)
                 logger.info(f"✅ Сохранено {len(trades_list)} сделок")
             
-            # Формирование результатов
-            return self._format_results(
-                strat, 
-                initial_value, 
-                final_value, 
-                len(trades_list)
-            )
+            # Формируем результаты
+            return self._format_results(pf, initial_cash, len(trades_list))
             
         except Exception as e:
             logger.error(f"❌ Ошибка запуска бэктеста: {e}")
@@ -182,64 +133,59 @@ class BacktestRunner:
                 'error': str(e)
             }
     
-    def _collect_trades(self, strat) -> list:
-        """Собирает сделки из списка закрытых сделок стратегии"""
+    def _collect_trades(self, pf, df: pd.DataFrame) -> list:
+        """Собирает сделки из VectorBT Portfolio"""
         trades_list = []
         
-        if hasattr(strat, 'trade_list'):
-            for trade in strat.trade_list:
-                # Теперь trade - это словарь!
-                if 'history' not in trade or not trade['history'] or len(trade['history']) < 2:
-                    logger.warning(f"⚠️ Trade без history, пропускаем")
-                    continue
+        try:
+            trades_df = pf.trades.records_readable
+            
+            if trades_df.empty:
+                return trades_list
+            
+            # Получаем информацию о стопах из orders
+            orders_df = pf.orders.records_readable
+            
+            for _, trade in trades_df.iterrows():
+                entry_ts = trade['Entry Timestamp']
+                exit_ts = trade['Exit Timestamp']
                 
-                # Получаем события входа и выхода
-                entry_event = trade['history'][0]
-                exit_event = trade['history'][-1]
-                
-                # Получаем размер и направление из entry
-                entry_size = entry_event['status']['size']
-                side = 'LONG' if entry_size > 0 else 'SHORT'
-                
-                # Получаем данные
-                entry_date = bt.num2date(entry_event['status']['dt']).replace(tzinfo=None)
-                entry_price = entry_event['event']['price']
-                entry_commission = entry_event['event']['commission']
-                
-                exit_date = bt.num2date(exit_event['status']['dt']).replace(tzinfo=None)
-                exit_price = exit_event['event']['price']
-                exit_commission = exit_event['event']['commission']
-                
-                total_commission = entry_commission + exit_commission
+                # Считаем bars_held по индексу
+                try:
+                    entry_idx = df.index.get_loc(entry_ts)
+                    exit_idx = df.index.get_loc(exit_ts)
+                    bars_held = exit_idx - entry_idx
+                except:
+                    bars_held = None
                 
                 trade_data = {
-                    'entry_date': entry_date,
-                    'entry_price': entry_price,
-                    'entry_size': abs(entry_size),
-                    'side': side,
-                    'exit_date': exit_date,
-                    'exit_price': exit_price,
-                    'pnl': trade['pnl'],  # ← из словаря!
-                    'pnl_percent': (trade['pnl'] / abs(entry_event['status']['value'])) * 100 if entry_event['status']['value'] != 0 else 0,
-                    'commission': total_commission,
-                    'bars_held': trade['barlen'],  # ← из словаря!
+                    'entry_date': entry_ts,
+                    'entry_price': float(trade['Avg Entry Price']),
+                    'entry_size': float(trade['Size']),
+                    'side': 'LONG' if trade['Direction'] == 'Long' else 'SHORT',
+                    'exit_date': exit_ts,
+                    'exit_price': float(trade['Avg Exit Price']),
+                    'pnl': float(trade['PnL']),
+                    'pnl_percent': float(trade['Return'] * 100),
+                    'commission': float(trade['Entry Fees'] + trade['Exit Fees']),
+                    'bars_held': bars_held,
                     'mae': None,
                     'mfe': None,
-                    'trade_history': {
-                        'events': trade['history'],
-                        'custom': trade.get('custom', {})
-                    },
-                    'exit_reason': trade.get('exit_reason', 'UNKNOWN'),
+                    'trade_history': {},
+                    'exit_reason': trade['Status'],  # Closed или Open
                 }
                 trades_list.append(trade_data)
             
             logger.info(f"📊 Собрано сделок: {len(trades_list)}")
+   
+
+            
+        except Exception as e:
+            logger.warning(f"⚠️ Ошибка сбора сделок: {e}")
         
         return trades_list
-
     
-    
-    def _format_results(self, strat, initial_value, final_value, trades_count) -> Dict:
+    def _format_results(self, pf, initial_cash: float, trades_count: int) -> Dict:
         """Форматирует результаты бэктеста"""
         import math
         
@@ -255,30 +201,25 @@ class BacktestRunner:
             except (TypeError, ValueError):
                 return default
         
-        # Получаем данные из анализаторов
-        sharpe_analysis = strat.analyzers.sharpe.get_analysis()
-        drawdown_analysis = strat.analyzers.drawdown.get_analysis()
-        returns_analysis = strat.analyzers.returns.get_analysis()
-        trades_analysis = strat.analyzers.trades.get_analysis()
-        
-        sharpe = sharpe_analysis.get('sharperatio', None) if sharpe_analysis else None
-        drawdown = drawdown_analysis.get('max', {}).get('drawdown', None) if drawdown_analysis else None
-        returns = returns_analysis.get('rtot', None) if returns_analysis else None
+        stats = pf.stats()
+        final_value = float(pf.final_value())
         
         return {
             'success': True,
             'results': {
-                'initial_value': float(initial_value),
-                'final_value': float(final_value),
-                'profit': float(final_value - initial_value),
-                'profit_percent': float(((final_value - initial_value) / initial_value) * 100),
-                'sharpe_ratio': safe_float(sharpe, 0.0),
-                'max_drawdown': safe_float(drawdown, 0.0),
-                'total_return': safe_float(returns, 0.0) * 100,
+                'initial_value': float(initial_cash),
+                'final_value': final_value,
+                'profit': final_value - initial_cash,
+                'profit_percent': ((final_value / initial_cash) - 1) * 100,
+                'sharpe_ratio': safe_float(stats.get('Sharpe Ratio', 0)),
+                'max_drawdown': safe_float(stats.get('Max Drawdown [%]', 0)),
+                'total_return': safe_float(stats.get('Total Return [%]', 0)),
                 'trades_count': trades_count,
-                'trades_analysis': trades_analysis if trades_analysis else {}
+                'win_rate': safe_float(stats.get('Win Rate [%]', 0)),
+                'trades_analysis': {}
             }
         }
 
-# Создаем глобальный экземпляр
+
+# Создаём глобальный экземпляр
 backtest_runner = BacktestRunner()

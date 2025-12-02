@@ -8,29 +8,26 @@ from typing import Dict, List, Any
 
 def get_strategies_list() -> List[Dict[str, Any]]:
     """
-    Автоматически сканирует папку strategies и возвращает список всех стратегий
-    
-    Returns:
-        List[Dict]: Список стратегий с их метаданными
+    Сканирует папку strategies/str и возвращает список всех стратегий
     """
     strategies = []
     strategies_dir = os.path.dirname(__file__)
+    str_dir = os.path.join(strategies_dir, 'str')
     
-    # Проходим по всем .py файлам в папке strategies
-    for filename in os.listdir(strategies_dir):
-        # Пропускаем служебные файлы
-        if filename.endswith('.py') and filename not in ['__init__.py', 'base_strategy.py']:
-            module_name = filename[:-3]  # убираем .py
+    if not os.path.exists(str_dir):
+        return strategies
+    
+    for filename in os.listdir(str_dir):
+        if filename.endswith('.py') and filename != '__init__.py':
+            module_name = filename[:-3]
             
             try:
-                # Импортируем модуль
-                module = importlib.import_module(f'strategies.{module_name}')
+                module = importlib.import_module(f'strategies.str.{module_name}')
                 
-                # Ищем класс стратегии в модуле
                 for name, obj in inspect.getmembers(module, inspect.isclass):
-                    if hasattr(obj, 'STRATEGY_INFO') and obj.__module__ == f'strategies.{module_name}':
+                    if hasattr(obj, 'STRATEGY_INFO') and obj.__module__ == f'strategies.str.{module_name}':
                         strategy_info = obj.STRATEGY_INFO.copy()
-                        strategy_info['module'] = module_name
+                        strategy_info['module'] = f'str.{module_name}'
                         strategy_info['class_name'] = name
                         strategies.append(strategy_info)
                         

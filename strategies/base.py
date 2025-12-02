@@ -1,94 +1,46 @@
 """
-Базовый класс для всех стратегий с автоматическим сбором сделок
+Базовый класс для всех стратегий VectorBT
 """
-import backtrader as bt
-import copy
+import pandas as pd
+from typing import Dict, Any, Optional
 
-class BaseStrategy(bt.Strategy):
-    """Базовый класс для всех стратегий"""
+
+class BaseStrategy:
+    """Базовый класс для стратегий VectorBT"""
     
-    def __init__(self):
-        self.trades_data = []
-        self.trade_list = []  # Список для отслеживания сделок
-        self.pending_trade_data = {}  # Новый словарь для кастомных данных
-
-    def add_trade_data(self, key, value):
-        """Добавляет кастомное поле к текущей сделке"""
-        self.pending_trade_data[key] = value
+    # Переопределяется в дочерних классах
+    STRATEGY_INFO = {
+        'id': 'base',
+        'name': 'Base Strategy',
+        'description': '',
+        'params': {}
+    }
     
-    def log(self, txt, dt=None):
-        if self.params.printlog:
-            dt = dt or self.datas[0].datetime.date(0)
-            import logging
-            logger = logging.getLogger(__name__)
-            logger.info(f'{dt.isoformat()} {txt}')
+    def __init__(self, **kwargs):
+        """Сохраняет параметры стратегии"""
+        self.params = kwargs
     
-    def notify_trade(self, trade):
-        """Сбор сделок"""
-        if trade.isclosed:
-
-            exit_reason = getattr(self, 'exit_reason', 'UNKNOWN')
-
-            trade_data = {
-                'pnl': float(trade.pnl),
-                'pnlcomm': float(trade.pnlcomm),
-                'barlen': int(trade.barlen),
-                'size': float(trade.size),
-                'price': float(trade.price),
-                'value': float(trade.value),
-                'commission': float(trade.commission),
-                'isclosed': bool(trade.isclosed),
-                'exit_reason': exit_reason,
-                'history': []
-            }
-
-            self.exit_reason = None
+    def generate_signals(self, df: pd.DataFrame, df_sar: Optional[pd.DataFrame] = None) -> pd.Series:
+        """
+        Генерирует торговые сигналы
+        
+        Args:
+            df: DataFrame с OHLCV данными основного таймфрейма
+            df_sar: DataFrame с данными для SAR (опционально)
             
-            # Конвертируем history в простые словари
-            if hasattr(trade, 'history') and trade.history:
-                for event in trade.history:
-                    event_dict = {}
-                    
-                    # Конвертируем event
-                    for key, value in event.event.items():
-                        if key == 'order':
-                            # Извлекаем ВСЮ информацию из order объекта
-                            order = value
-                            event_dict['order_data'] = {
-                                'ref': order.ref,
-                                'status': order.status,
-                                'status_name': order.getstatusname(),
-                                'ordtype': order.ordtype,
-                                'ordtype_name': order.ordtypename(),
-                                'isbuy': order.isbuy(),
-                                'issell': order.issell(),
-                                'alive': order.alive(),
-                                'active': order.active(),
-                                'completed': order.completed(),
-                                'partial': order.partial(),
-                                # Атрибуты
-                                'triggered': order.triggered if hasattr(order, 'triggered') else None,
-                                'created': {
-                                    'dt': float(order.created.dt) if hasattr(order, 'created') and order.created else None,
-                                    'size': float(order.created.size) if hasattr(order, 'created') and order.created else None,
-                                    'price': float(order.created.price) if hasattr(order, 'created') and order.created else None,
-                                    'pricelimit': float(order.created.pricelimit) if hasattr(order, 'created') and order.created else None,
-                                } if hasattr(order, 'created') and order.created else None,
-                                'executed': {
-                                    'dt': float(order.executed.dt) if hasattr(order, 'executed') and order.executed else None,
-                                    'size': float(order.executed.size) if hasattr(order, 'executed') and order.executed else None,
-                                    'price': float(order.executed.price) if hasattr(order, 'executed') and order.executed else None,
-                                } if hasattr(order, 'executed') and order.executed else None,
-                            }
-                        else:
-                            event_dict[key] = value
-                    
-                    event_data = {
-                        'status': dict(event.status),
-                        'event': event_dict
-                    }
-                    trade_data['history'].append(event_data)
-            trade_data['custom'] = self.pending_trade_data.copy()
-            self.pending_trade_data = {}  # Очищаем для следующей сделки
-            
-            self.trade_list.append(trade_data)
+        Returns:
+            pd.Series: 1 = LONG, -1 = SHORT, 0 = нет сигнала
+        """
+        raise NotImplementedError("Метод generate_signals должен быть реализован")
+    
+    def get_exit_params(self) -> Dict[str, float]:
+        """
+        Возвращает параметры выхода (TP/SL)
+        
+        Returns:
+            Dict с ключами 'take_profit' и 'stop_loss' (в долях, не процентах)
+        """
+        return {
+            'take_profit': self.params.get('take_profit', 0.01),
+            'stop_loss': self.params.get('stop_loss', 0.01)
+        }
