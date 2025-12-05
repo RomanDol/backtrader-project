@@ -10,12 +10,36 @@ from typing import Dict, Any
 from .binance_data_loader import binance_data_loader
 from .backtest_results import backtest_results_manager
 from strategies import get_strategy_class
+from numba import njit
 
 logger = logging.getLogger(__name__)
 
+@njit
+def adjust_sl_func_nb(c, tp_level, trail_offset):
+    """
+    Trailing активируется после достижения TP уровня.
+    После активации остаётся активным до закрытия позиции.
+    """
+    # Если trailing уже активирован - НЕ отключаем его
+    if c.curr_trail:
+        return trail_offset, True
+    
+    if c.position_now > 0:  # Long
+        current_profit = (c.val_price_now - c.init_price) / c.init_price
+        if current_profit >= tp_level:
+            return trail_offset, True
+    elif c.position_now < 0:  # Short
+        current_profit = (c.init_price - c.val_price_now) / c.init_price
+        if current_profit >= tp_level:
+            return trail_offset, True
+    
+    return c.curr_stop, c.curr_trail
 
 class BacktestRunner:
     """Класс для запуска бэктестов на VectorBT"""
+
+    
+
         
     def run_backtest(
         self,
@@ -90,28 +114,81 @@ class BacktestRunner:
             
             # Получаем параметры выхода
             exit_params = strategy.get_exit_params()
+
+            # Параметры trailing (если есть)
+            tp_level = exit_params['take_profit']  # уровень активации trailing
+            trail_offset = exit_params.get('trail_offset', 0)  # отступ trailing
             
             # Точки входа/выхода
             entries_long = signals == 1
             entries_short = signals == -1
-            exits_long = signals != 1
-            exits_short = signals != -1
+
+            # Выход ТОЛЬКО по TP/SL/Trailing - как в TradingView
+            exits_long = pd.Series(False, index=df.index)
+            exits_short = pd.Series(False, index=df.index)
+
+            # trail_offset = 0
+
+            print(f"=== TRAILING DEBUG ===")
+            print(f"tp_level: {tp_level}")
+            print(f"trail_offset: {trail_offset}")
+            print(f"sl_stop: {exit_params['stop_loss']}")
+            print(f"exits disabled: {trail_offset > 0}")
+            print(f"======================")
             
             # Запуск VectorBT Portfolio
-            pf = vbt.Portfolio.from_signals(
-                close=df['close'],
-                entries=entries_long,
-                exits=exits_long,
-                short_entries=entries_short,
-                short_exits=exits_short,
-                init_cash=initial_cash,
-                fees=commission,
-                sl_stop=exit_params['stop_loss'],
-                tp_stop=exit_params['take_profit'],
-                size=strategy_params.get('quote', initial_cash),
-                size_type='value',
-                freq=timeframe
-)
+            if trail_offset > 0:
+                # С trailing - БЕЗ tp_stop
+                pf = vbt.Portfolio.from_signals(
+                    open=df['open'],
+                    high=df['high'],
+                    low=df['low'],
+                    close=df['close'],
+                    entries=entries_long,
+                    exits=exits_long,
+                    short_entries=entries_short,
+                    short_exits=exits_short,
+                    init_cash=initial_cash,
+                    fees=commission,
+                    sl_stop=exit_params['stop_loss'],
+                    # tp_stop НЕ указываем - выход только по trailing SL
+                    adjust_sl_func_nb=adjust_sl_func_nb,
+                    adjust_sl_args=(tp_level, trail_offset),
+                    use_stops=True,
+                    size=strategy_params.get('quote', initial_cash),
+                    size_type='value',
+                    freq=timeframe
+                )
+            else:
+                # Без trailing - обычный TP/SL
+                pf = vbt.Portfolio.from_signals(
+                    open=df['open'],
+                    high=df['high'],
+                    low=df['low'],
+                    close=df['close'],
+                    entries=entries_long,
+                    exits=exits_long,
+                    short_entries=entries_short,
+                    short_exits=exits_short,
+                    init_cash=initial_cash,
+                    fees=commission,
+                    sl_stop=exit_params['stop_loss'],
+                    tp_stop=exit_params['take_profit'],
+                    use_stops=True,
+                    size=strategy_params.get('quote', initial_cash),
+                    size_type='value',
+                    freq=timeframe
+                )
+            
+            # === ДОБАВЬ ЗДЕСЬ ===
+            print(f"=== TRADES DEBUG ===")
+            print(f"Trail offset: {trail_offset}")
+            print(f"Total trades: {len(pf.trades.records_readable)}")
+            if len(pf.trades.records_readable) > 0:
+                print(pf.trades.records_readable[['Entry Timestamp', 'Avg Entry Price', 'Avg Exit Price', 'PnL', 'Return']].head(10))
+            print(f"Final value: {pf.final_value()}")
+            print(f"====================")
+            # === КОНЕЦ ОТЛАДКИ ===
             
             # Собираем сделки
             trades_list = self._collect_trades(pf, df)

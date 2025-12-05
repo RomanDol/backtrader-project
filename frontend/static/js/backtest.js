@@ -396,9 +396,10 @@ document.addEventListener("DOMContentLoaded", function () {
         const value = formData.get(`strategy_params[${key}]`)
         // Преобразуем в нужный тип
         if (config.type === "number") {
-          strategyParams[key] = parseFloat(value) || config.default
+          const parsed = parseFloat(value)
+          strategyParams[key] = !isNaN(parsed) ? parsed : config.default
         } else {
-          strategyParams[key] = value || config.default
+          strategyParams[key] = value !== "" ? value : config.default
         }
       }
 
