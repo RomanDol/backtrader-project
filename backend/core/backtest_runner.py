@@ -15,22 +15,22 @@ from numba import njit
 logger = logging.getLogger(__name__)
 
 @njit
-def adjust_sl_func_nb(c, tp_level, trail_offset):
+def adjust_sl_func_nb(c, tp_level, trail_offset, high_arr, low_arr):
     """
-    Trailing активируется после достижения TP уровня.
-    После активации остаётся активным до закрытия позиции.
+    Trailing активируется после достижения TP уровня по high/low.
     """
-    # Если trailing уже активирован - НЕ отключаем его
     if c.curr_trail:
         return trail_offset, True
     
     if c.position_now > 0:  # Long
-        current_profit = (c.val_price_now - c.init_price) / c.init_price
-        if current_profit >= tp_level:
+        high_price = high_arr[c.i]
+        tp_price = c.init_price * (1 + tp_level)
+        if high_price >= tp_price:
             return trail_offset, True
     elif c.position_now < 0:  # Short
-        current_profit = (c.init_price - c.val_price_now) / c.init_price
-        if current_profit >= tp_level:
+        low_price = low_arr[c.i]
+        tp_price = c.init_price * (1 - tp_level)
+        if low_price <= tp_price:
             return trail_offset, True
     
     return c.curr_stop, c.curr_trail
@@ -111,6 +111,8 @@ class BacktestRunner:
             
             # Генерируем сигналы
             signals = strategy.generate_signals(df, df_sar)
+            print(f"Signal на 11:03: {signals.loc['2025-09-18 11:03:00']}")
+            print(f"Signal на 11:04: {signals.loc['2025-09-18 11:04:00']}")
             
             # Получаем параметры выхода
             exit_params = strategy.get_exit_params()
@@ -123,18 +125,19 @@ class BacktestRunner:
             entries_long = signals == 1
             entries_short = signals == -1
 
+            # DEBUG
+            print(f"entries_long на 11:02: {entries_long.loc['2025-09-18 11:02:00']}")
+            print(f"entries_long на 11:03: {entries_long.loc['2025-09-18 11:03:00']}")
+            print(f"entries_short на 11:02: {entries_short.loc['2025-09-18 11:02:00']}")
+            print(f"entries_short на 11:03: {entries_short.loc['2025-09-18 11:03:00']}")
+
             # Выход ТОЛЬКО по TP/SL/Trailing - как в TradingView
             exits_long = pd.Series(False, index=df.index)
             exits_short = pd.Series(False, index=df.index)
 
             # trail_offset = 0
 
-            print(f"=== TRAILING DEBUG ===")
-            print(f"tp_level: {tp_level}")
-            print(f"trail_offset: {trail_offset}")
-            print(f"sl_stop: {exit_params['stop_loss']}")
-            print(f"exits disabled: {trail_offset > 0}")
-            print(f"======================")
+
             
             # Запуск VectorBT Portfolio
             if trail_offset > 0:
@@ -153,11 +156,12 @@ class BacktestRunner:
                     sl_stop=exit_params['stop_loss'],
                     # tp_stop НЕ указываем - выход только по trailing SL
                     adjust_sl_func_nb=adjust_sl_func_nb,
-                    adjust_sl_args=(tp_level, trail_offset),
+                    adjust_sl_args=(tp_level, trail_offset, df['high'].values, df['low'].values),
                     use_stops=True,
                     size=strategy_params.get('quote', initial_cash),
                     size_type='value',
-                    freq=timeframe
+                    freq=timeframe,
+                    upon_opposite_entry='Ignore'
                 )
             else:
                 # Без trailing - обычный TP/SL
@@ -174,21 +178,17 @@ class BacktestRunner:
                     fees=commission,
                     sl_stop=exit_params['stop_loss'],
                     tp_stop=exit_params['take_profit'],
+                    stop_exit_price='stoplimit',
                     use_stops=True,
                     size=strategy_params.get('quote', initial_cash),
                     size_type='value',
-                    freq=timeframe
+                    freq=timeframe,
+                    upon_opposite_entry='Ignore'
                 )
             
-            # === ДОБАВЬ ЗДЕСЬ ===
-            print(f"=== TRADES DEBUG ===")
-            print(f"Trail offset: {trail_offset}")
-            print(f"Total trades: {len(pf.trades.records_readable)}")
-            if len(pf.trades.records_readable) > 0:
-                print(pf.trades.records_readable[['Entry Timestamp', 'Avg Entry Price', 'Avg Exit Price', 'PnL', 'Return']].head(10))
-            print(f"Final value: {pf.final_value()}")
-            print(f"====================")
-            # === КОНЕЦ ОТЛАДКИ ===
+            # DEBUG trades
+            print("\n--- VectorBT первые 5 сделок ---")
+            print(pf.trades.records_readable[['Entry Timestamp', 'Exit Timestamp', 'Direction', 'Avg Entry Price', 'Avg Exit Price', 'PnL']].head())
             
             # Собираем сделки
             trades_list = self._collect_trades(pf, df)
