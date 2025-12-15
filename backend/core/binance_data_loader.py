@@ -30,6 +30,11 @@ class BinanceDataLoader:
     
     def __init__(self):
         self.base_url = "https://data.binance.vision/data/futures/um"
+
+        # SQLAlchemy engine
+        from sqlalchemy import create_engine
+        db_url = f"postgresql://{DB_CONFIG['user']}:{DB_CONFIG['password']}@{DB_CONFIG['host']}:{DB_CONFIG['port']}/{DB_CONFIG['database']}"
+        self.engine = create_engine(db_url)
     
     def get_connection(self):
         """Создает подключение к PostgreSQL"""
@@ -42,54 +47,42 @@ class BinanceDataLoader:
         
 
     def load_data_for_backtest(self, symbol: str, timeframe: str, start_date: str, end_date: str):
-        """
-        Загружает данные из базы для бэктеста
-        
-        Args:
-            symbol: Торговая пара (BTCUSDT)
-            timeframe: Таймфрейм (1m, 5m, 1h и т.д.)
-            start_date: Дата начала (YYYY-MM-DD)
-            end_date: Дата окончания (YYYY-MM-DD)
-            
-        Returns:
-            DataFrame с данными или None
-        """
         try:
             import pandas as pd
             
-            with self.get_connection() as conn:
-                query = """
-                    SELECT 
-                        time as datetime,
-                        open,
-                        high,
-                        low,
-                        close,
-                        volume
-                    FROM candles
-                    WHERE symbol = %s 
-                      AND timeframe = %s
-                      AND time >= %s 
-                      AND time <= %s
-                    ORDER BY time
-                """
+            query = """
+                SELECT 
+                    time as datetime,
+                    open, high, low, close, volume
+                FROM candles
+                WHERE symbol = %(symbol)s 
+                AND timeframe = %(timeframe)s
+                AND time >= %(start_date)s 
+                AND time <= %(end_date)s
+                ORDER BY time
+            """
+            
+            df = pd.read_sql_query(
+                query, 
+                self.engine,  # <-- SQLAlchemy engine вместо conn
+                params={
+                    'symbol': symbol,
+                    'timeframe': timeframe,
+                    'start_date': start_date,
+                    'end_date': end_date + ' 23:59:59'
+                }
+            )
                 
-                df = pd.read_sql_query(
-                    query, 
-                    conn, 
-                    params=(symbol, timeframe, start_date, end_date + ' 23:59:59')
-                )
-                
-                if df.empty:
-                    logger.warning(f"⚠️ Нет данных для {symbol} {timeframe} за период {start_date} - {end_date}")
-                    return None
-                
-                # Преобразуем datetime в индекс
-                df['datetime'] = pd.to_datetime(df['datetime'])
-                df.set_index('datetime', inplace=True)
-                
-                logger.info(f"✅ Загружено {len(df)} свечей из таблицы candles")
-                return df
+            if df.empty:
+                logger.warning(f"⚠️ Нет данных для {symbol} {timeframe} за период {start_date} - {end_date}")
+                return None
+            
+            # Преобразуем datetime в индекс
+            df['datetime'] = pd.to_datetime(df['datetime'])
+            df.set_index('datetime', inplace=True)
+            
+            logger.info(f"✅ Загружено {len(df)} свечей из таблицы candles")
+            return df
                 
         except Exception as e:
             logger.error(f"❌ Ошибка загрузки данных для бэктеста: {e}")

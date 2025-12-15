@@ -10,30 +10,10 @@ from typing import Dict, Any
 from .binance_data_loader import binance_data_loader
 from .backtest_results import backtest_results_manager
 from strategies import get_strategy_class
-from numba import njit
 
 logger = logging.getLogger(__name__)
 
-@njit
-def adjust_sl_func_nb(c, tp_level, trail_offset, high_arr, low_arr):
-    """
-    Trailing активируется после достижения TP уровня по high/low.
-    """
-    if c.curr_trail:
-        return trail_offset, True
-    
-    if c.position_now > 0:  # Long
-        high_price = high_arr[c.i]
-        tp_price = c.init_price * (1 + tp_level)
-        if high_price >= tp_price:
-            return trail_offset, True
-    elif c.position_now < 0:  # Short
-        low_price = low_arr[c.i]
-        tp_price = c.init_price * (1 - tp_level)
-        if low_price <= tp_price:
-            return trail_offset, True
-    
-    return c.curr_stop, c.curr_trail
+
 
 class BacktestRunner:
     """Класс для запуска бэктестов на VectorBT"""
@@ -50,8 +30,8 @@ class BacktestRunner:
         strategy_module: str,
         strategy_class: str,
         strategy_params: Dict[str, Any],
-        initial_cash: float = 10000.0,
-        commission: float = 0.001
+        initial_cash: float = 100.0,
+        commission: float = 0.05
     ) -> Dict[str, Any]:
         """
         Запускает бэктест с указанными параметрами
@@ -111,8 +91,7 @@ class BacktestRunner:
             
             # Генерируем сигналы
             signals = strategy.generate_signals(df, df_sar)
-            print(f"Signal на 11:03: {signals.loc['2025-09-18 11:03:00']}")
-            print(f"Signal на 11:04: {signals.loc['2025-09-18 11:04:00']}")
+
             
             # Получаем параметры выхода
             exit_params = strategy.get_exit_params()
@@ -121,75 +100,43 @@ class BacktestRunner:
             tp_level = exit_params['take_profit']  # уровень активации trailing
             trail_offset = exit_params.get('trail_offset', 0)  # отступ trailing
             
-            # Точки входа/выхода
-            entries_long = signals == 1
-            entries_short = signals == -1
 
-            # DEBUG
-            print(f"entries_long на 11:02: {entries_long.loc['2025-09-18 11:02:00']}")
-            print(f"entries_long на 11:03: {entries_long.loc['2025-09-18 11:03:00']}")
-            print(f"entries_short на 11:02: {entries_short.loc['2025-09-18 11:02:00']}")
-            print(f"entries_short на 11:03: {entries_short.loc['2025-09-18 11:03:00']}")
 
-            # Выход ТОЛЬКО по TP/SL/Trailing - как в TradingView
-            exits_long = pd.Series(False, index=df.index)
-            exits_short = pd.Series(False, index=df.index)
 
             # trail_offset = 0
 
 
             
-            # Запуск VectorBT Portfolio
-            if trail_offset > 0:
-                # С trailing - БЕЗ tp_stop
-                pf = vbt.Portfolio.from_signals(
-                    open=df['open'],
-                    high=df['high'],
-                    low=df['low'],
-                    close=df['close'],
-                    entries=entries_long,
-                    exits=exits_long,
-                    short_entries=entries_short,
-                    short_exits=exits_short,
-                    init_cash=initial_cash,
-                    fees=commission,
-                    sl_stop=exit_params['stop_loss'],
-                    # tp_stop НЕ указываем - выход только по trailing SL
-                    adjust_sl_func_nb=adjust_sl_func_nb,
-                    adjust_sl_args=(tp_level, trail_offset, df['high'].values, df['low'].values),
-                    use_stops=True,
-                    size=strategy_params.get('quote', initial_cash),
-                    size_type='value',
-                    freq=timeframe,
-                    upon_opposite_entry='Ignore'
-                )
-            else:
-                # Без trailing - обычный TP/SL
-                pf = vbt.Portfolio.from_signals(
-                    open=df['open'],
-                    high=df['high'],
-                    low=df['low'],
-                    close=df['close'],
-                    entries=entries_long,
-                    exits=exits_long,
-                    short_entries=entries_short,
-                    short_exits=exits_short,
-                    init_cash=initial_cash,
-                    fees=commission,
-                    sl_stop=exit_params['stop_loss'],
-                    tp_stop=exit_params['take_profit'],
-                    stop_exit_price='stoplimit',
-                    use_stops=True,
-                    size=strategy_params.get('quote', initial_cash),
-                    size_type='value',
-                    freq=timeframe,
-                    upon_opposite_entry='Ignore'
-                )
+            # Импортируем симулятор
+            from .trade_simulator import simulate_trades_nb
             
-            # DEBUG trades
-            print("\n--- VectorBT первые 5 сделок ---")
-            print(pf.trades.records_readable[['Entry Timestamp', 'Exit Timestamp', 'Direction', 'Avg Entry Price', 'Avg Exit Price', 'PnL']].head())
+            # Конвертируем сигналы в numpy array
+            direction_signals = signals.values.astype(np.float64)
             
+            # Запускаем симуляцию
+            order_size, order_price = simulate_trades_nb(
+                direction_signals,
+                df['open'].values,
+                df['high'].values,
+                df['low'].values,
+                df['close'].values,
+                tp_level,
+                trail_offset,
+                exit_params['stop_loss'],
+                strategy_params.get('quote', initial_cash)
+            )
+            
+            # Создаём Portfolio через from_orders
+            pf = vbt.Portfolio.from_orders(
+                close=df['close'],
+                size=pd.Series(order_size, index=df.index),
+                price=pd.Series(order_price, index=df.index),
+                init_cash=initial_cash,
+                fees=commission,
+                freq=timeframe,
+            )
+            
+
             # Собираем сделки
             trades_list = self._collect_trades(pf, df)
             
